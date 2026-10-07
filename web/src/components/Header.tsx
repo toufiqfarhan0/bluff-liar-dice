@@ -3,7 +3,7 @@ import { ConnectedWallet } from "../lib/wallet";
 import { shortKey } from "./Avatar";
 import { Flame, LogOut } from "lucide-react";
 
-export type NavTab = "home" | "practice" | "rules";
+export type NavTab = "home" | "rules";
 
 export function Header({
   wallet,
@@ -53,7 +53,7 @@ export function Header({
           <span className="font-bold tracking-wider">BLUFF LIAR'S DICE</span>
         </button>
 
-        {/* Navigation Links: Home, Practice, Rules */}
+        {/* Navigation Links: Home, Rules */}
         <nav className="order-3 flex w-full gap-5 text-sm text-slate-400 sm:order-none sm:w-auto sm:gap-6">
           <button
             onClick={() => onSelectTab("home")}
@@ -64,16 +64,6 @@ export function Header({
             }`}
           >
             Home
-          </button>
-          <button
-            onClick={() => onSelectTab("practice")}
-            className={`transition cursor-pointer ${
-              activeTab === "practice"
-                ? "text-slate-100 font-medium"
-                : "text-slate-400 hover:text-slate-100"
-            }`}
-          >
-            Practice
           </button>
           <button
             onClick={() => onSelectTab("rules")}

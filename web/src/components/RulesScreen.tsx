@@ -3,10 +3,8 @@ import { ArrowRight, ShieldCheck, Lock, Eye, Dices } from "lucide-react";
 
 export function RulesScreen({
   onGoLobby,
-  onGoPractice,
 }: {
   onGoLobby: () => void;
-  onGoPractice: () => void;
 }) {
   return (
     <div className="w-full flex-1">
@@ -91,14 +89,7 @@ export function RulesScreen({
               onClick={onGoLobby}
               className="rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-600/30 transition hover:bg-orange-500 cursor-pointer"
             >
-              Go to lobby
-            </button>
-            <button
-              type="button"
-              onClick={onGoPractice}
-              className="rounded-lg border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/25 cursor-pointer bg-slate-900/60"
-            >
-              Play practice game
+              Back to tables
             </button>
           </div>
         </div>

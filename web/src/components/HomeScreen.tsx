@@ -10,7 +10,6 @@ export function HomeScreen({
   onChangeJoinCode,
   onFindRoom,
   onOpenRoom,
-  onGoPractice,
   onGoRules,
   busy,
 }: {
@@ -20,7 +19,6 @@ export function HomeScreen({
   onChangeJoinCode: (code: string) => void;
   onFindRoom: () => void;
   onOpenRoom: () => void;
-  onGoPractice: () => void;
   onGoRules: () => void;
   busy: boolean;
 }) {
@@ -227,18 +225,6 @@ export function HomeScreen({
                     Join
                   </button>
                 </div>
-              </div>
-
-              {/* Offline Practice Teaser */}
-              <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
-                <span className="text-slate-400">No wallet? Try for free:</span>
-                <button
-                  type="button"
-                  onClick={onGoPractice}
-                  className="text-orange-400 font-semibold hover:underline cursor-pointer"
-                >
-                  Play Practice Mode →
-                </button>
               </div>
             </div>
           </div>

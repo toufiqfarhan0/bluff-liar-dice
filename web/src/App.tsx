@@ -30,7 +30,6 @@ import {
 import { shortKey } from "./components/Avatar";
 import { Header, NavTab } from "./components/Header";
 import { HomeScreen } from "./components/HomeScreen";
-import { PracticeScreen } from "./components/PracticeScreen";
 import { RulesScreen } from "./components/RulesScreen";
 import { OpeningScreen } from "./components/OpeningScreen";
 import { JoiningScreen } from "./components/JoiningScreen";
@@ -63,7 +62,6 @@ const HOST_COST = (bots: number) =>
 
 type Screen =
   | "home"
-  | "practice"
   | "rules"
   | "opening"
   | "joining"
@@ -721,21 +719,12 @@ export default function App() {
       ),
   ).length;
 
-  const activeTab: NavTab =
-    screen === "home"
-      ? "home"
-      : screen === "practice" || (screen === "playing" && isPracticeMode)
-      ? "practice"
-      : screen === "rules"
-      ? "rules"
-      : "home";
+  const activeTab: NavTab = screen === "rules" ? "rules" : "home";
 
   const handleTabSelect = (tab: NavTab) => {
     if (tab === "home") {
       onAgain();
       setScreen("home");
-    } else if (tab === "practice") {
-      setScreen("practice");
     } else if (tab === "rules") {
       setScreen("rules");
     }
@@ -799,25 +788,15 @@ export default function App() {
               setVote(Ending.Split);
               setScreen("opening");
             }}
-            onGoPractice={() => setScreen("practice")}
             onGoRules={() => setScreen("rules")}
             busy={!!busy}
           />
         )}
 
-        {/* Practice Setup Screen matching FHE Liar's Dice */}
-        {screen === "practice" && (
-          <PracticeScreen
-            onStartPractice={onStartPractice}
-            onGoLobby={() => setScreen("home")}
-          />
-        )}
-
-        {/* Rules & Privacy Screen matching FHE Liar's Dice */}
+        {/* Rules & Privacy Screen */}
         {screen === "rules" && (
           <RulesScreen
             onGoLobby={() => setScreen("home")}
-            onGoPractice={() => setScreen("practice")}
           />
         )}
 
