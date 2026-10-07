@@ -22,16 +22,16 @@ use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 
 use common::*;
-use herd::error::HerdError;
-use herd::state::{Ending, Outcome, Phase, Room, Seat, MAX_ANSWER, MAX_PLAYERS};
+use bluff::error::HerdError;
+use bluff::state::{Ending, Outcome, Phase, Room, Seat, MAX_ANSWER, MAX_PLAYERS};
 
 const ROOM_ID: u64 = 11;
 const STAKE: u64 = 50_000_000;
 
 fn ix_create(host: &Pubkey) -> Instruction {
     Instruction {
-        program_id: herd::ID,
-        accounts: herd::accounts::CreateRoom {
+        program_id: bluff::ID,
+        accounts: bluff::accounts::CreateRoom {
             host: *host,
             room: room_pda(host, ROOM_ID),
             vault: vault_pda(&room_pda(host, ROOM_ID)),
@@ -39,7 +39,7 @@ fn ix_create(host: &Pubkey) -> Instruction {
             system_program: system_program::ID,
         }
         .to_account_metas(None),
-        data: herd::instruction::CreateRoom {
+        data: bluff::instruction::CreateRoom {
             room_id: ROOM_ID,
             stake: STAKE,
             round_seconds: 15,
@@ -52,15 +52,15 @@ fn ix_create(host: &Pubkey) -> Instruction {
 fn ix_join(host: &Pubkey, player: &Pubkey) -> Instruction {
     let room = room_pda(host, ROOM_ID);
     Instruction {
-        program_id: herd::ID,
-        accounts: herd::accounts::JoinRoom {
+        program_id: bluff::ID,
+        accounts: bluff::accounts::JoinRoom {
             player: *player,
             room,
             vault: vault_pda(&room),
             system_program: system_program::ID,
         }
         .to_account_metas(None),
-        data: herd::instruction::JoinRoom {
+        data: bluff::instruction::JoinRoom {
             session: Keypair::new().pubkey(),
             ending_vote: Ending::Split,
         }
@@ -70,7 +70,7 @@ fn ix_join(host: &Pubkey, player: &Pubkey) -> Instruction {
 
 fn ix_settle(caller: &Pubkey, host: &Pubkey, winners: &[Pubkey]) -> Instruction {
     let room = room_pda(host, ROOM_ID);
-    let mut accounts = herd::accounts::Settle {
+    let mut accounts = bluff::accounts::Settle {
         caller: *caller,
         room,
         vault: vault_pda(&room),
@@ -79,9 +79,9 @@ fn ix_settle(caller: &Pubkey, host: &Pubkey, winners: &[Pubkey]) -> Instruction 
     accounts.extend(winners.iter().map(|w| AccountMeta::new(*w, false)));
 
     Instruction {
-        program_id: herd::ID,
+        program_id: bluff::ID,
         accounts,
-        data: herd::instruction::Settle {}.data(),
+        data: bluff::instruction::Settle {}.data(),
     }
 }
 

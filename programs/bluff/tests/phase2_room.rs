@@ -17,16 +17,16 @@ use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 
 use common::*;
-use herd::error::HerdError;
-use herd::state::{Ending, Phase, Room};
+use bluff::error::HerdError;
+use bluff::state::{Ending, Phase, Room};
 
 const ROOM_ID: u64 = 7;
 const STAKE: u64 = 50_000_000; // 0.05 SOL
 
 fn ix_create(host: &Pubkey) -> Instruction {
     Instruction {
-        program_id: herd::ID,
-        accounts: herd::accounts::CreateRoom {
+        program_id: bluff::ID,
+        accounts: bluff::accounts::CreateRoom {
             host: *host,
             room: room_pda(host, ROOM_ID),
             vault: vault_pda(&room_pda(host, ROOM_ID)),
@@ -34,7 +34,7 @@ fn ix_create(host: &Pubkey) -> Instruction {
             system_program: system_program::ID,
         }
         .to_account_metas(None),
-        data: herd::instruction::CreateRoom {
+        data: bluff::instruction::CreateRoom {
             room_id: ROOM_ID,
             stake: STAKE,
             round_seconds: 15,
@@ -56,15 +56,15 @@ fn ix_join_voting(
 ) -> Instruction {
     let room = room_pda(host, ROOM_ID);
     Instruction {
-        program_id: herd::ID,
-        accounts: herd::accounts::JoinRoom {
+        program_id: bluff::ID,
+        accounts: bluff::accounts::JoinRoom {
             player: *player,
             room,
             vault: vault_pda(&room),
             system_program: system_program::ID,
         }
         .to_account_metas(None),
-        data: herd::instruction::JoinRoom {
+        data: bluff::instruction::JoinRoom {
             session,
             ending_vote,
         }
@@ -74,27 +74,27 @@ fn ix_join_voting(
 
 fn ix_lock(host: &Pubkey) -> Instruction {
     Instruction {
-        program_id: herd::ID,
-        accounts: herd::accounts::LockRoom {
+        program_id: bluff::ID,
+        accounts: bluff::accounts::LockRoom {
             authority: *host,
             room: room_pda(host, ROOM_ID),
         }
         .to_account_metas(None),
-        data: herd::instruction::LockRoom {}.data(),
+        data: bluff::instruction::LockRoom {}.data(),
     }
 }
 
 fn ix_leave(host: &Pubkey, player: &Pubkey) -> Instruction {
     let room = room_pda(host, ROOM_ID);
     Instruction {
-        program_id: herd::ID,
-        accounts: herd::accounts::LeaveRoom {
+        program_id: bluff::ID,
+        accounts: bluff::accounts::LeaveRoom {
             player: *player,
             room,
             vault: vault_pda(&room),
         }
         .to_account_metas(None),
-        data: herd::instruction::LeaveRoom {}.data(),
+        data: bluff::instruction::LeaveRoom {}.data(),
     }
 }
 
@@ -152,7 +152,7 @@ fn the_answers_account_carries_headroom_to_buy_its_own_privacy() {
     let rent_exempt =
         svm.minimum_balance_for_rent_exemption(svm.get_account(&answers).unwrap().data.len());
 
-    assert_eq!(balance(&svm, &answers), rent_exempt + herd::EPHEMERAL_RENT_BUFFER);
+    assert_eq!(balance(&svm, &answers), rent_exempt + bluff::EPHEMERAL_RENT_BUFFER);
 }
 
 #[test]
@@ -166,7 +166,7 @@ fn what_was_said_is_kept_apart_from_who_said_it() {
     let room = room_pda(&host.pubkey(), ROOM_ID);
     let answers = answers_pda(&room);
     assert_ne!(room, answers, "answers must be their own account");
-    assert_eq!(svm.get_account(&answers).unwrap().owner, herd::ID);
+    assert_eq!(svm.get_account(&answers).unwrap().owner, bluff::ID);
 }
 
 #[test]
@@ -189,7 +189,7 @@ fn the_vault_is_owned_by_this_program_and_never_delegated() {
     let (svm, host, _, _) = seated(3);
     let vault = vault_pda(&room_pda(&host.pubkey(), ROOM_ID));
 
-    assert_eq!(svm.get_account(&vault).unwrap().owner, herd::ID);
+    assert_eq!(svm.get_account(&vault).unwrap().owner, bluff::ID);
 }
 
 #[test]
@@ -384,7 +384,7 @@ fn the_hosts_session_key_can_lock_the_room() {
     let mut create = ix_create(&host.pubkey());
     create.data = {
         use anchor_lang::InstructionData;
-        herd::instruction::CreateRoom {
+        bluff::instruction::CreateRoom {
             room_id: ROOM_ID,
             stake: STAKE,
             round_seconds: 15,

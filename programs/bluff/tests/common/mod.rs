@@ -17,13 +17,13 @@ pub const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
 /// Derived from the enum rather than written down. Hand-counted numbers drift
 /// the moment a variant is inserted, and the test then asserts the wrong
 /// failure while still passing for the wrong reason.
-pub fn code(err: herd::error::HerdError) -> String {
+pub fn code(err: bluff::error::HerdError) -> String {
     format!("Custom({})", 6000 + err as u32)
 }
 
 pub fn setup() -> (LiteSVM, Keypair) {
     let mut svm = LiteSVM::new();
-    svm.add_program_from_file(herd::ID, "../../target/deploy/herd.so")
+    svm.add_program_from_file(bluff::ID, "../../target/deploy/bluff.so")
         .expect("the program artifact must be built - run `anchor build` first");
 
     let payer = Keypair::new();
@@ -39,18 +39,18 @@ pub fn funded(svm: &mut LiteSVM) -> Keypair {
 
 pub fn room_pda(host: &Pubkey, room_id: u64) -> Pubkey {
     Pubkey::find_program_address(
-        &[herd::ROOM_SEED, host.as_ref(), &room_id.to_le_bytes()],
-        &herd::ID,
+        &[bluff::ROOM_SEED, host.as_ref(), &room_id.to_le_bytes()],
+        &bluff::ID,
     )
     .0
 }
 
 pub fn vault_pda(room: &Pubkey) -> Pubkey {
-    Pubkey::find_program_address(&[herd::VAULT_SEED, room.as_ref()], &herd::ID).0
+    Pubkey::find_program_address(&[bluff::VAULT_SEED, room.as_ref()], &bluff::ID).0
 }
 
 pub fn answers_pda(room: &Pubkey) -> Pubkey {
-    Pubkey::find_program_address(&[herd::ANSWERS_SEED, room.as_ref()], &herd::ID).0
+    Pubkey::find_program_address(&[bluff::ANSWERS_SEED, room.as_ref()], &bluff::ID).0
 }
 
 pub fn send(
