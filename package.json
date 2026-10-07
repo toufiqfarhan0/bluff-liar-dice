@@ -1,0 +1,10 @@
+{
+  "name": "bluff",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd web && bun dev",
+    "build": "cd web && bun run build",
+    "web": "cd web && bun dev"
+  }
+}

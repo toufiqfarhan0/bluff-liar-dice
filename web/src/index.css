@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+:root {
+  --font-heading: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --background: #070a0f;
+  --surface: #11151a;
+  --surface-raised: #161c24;
+  --foreground: #eaf3fe;
+  --panel-border: rgba(255, 255, 255, 0.08);
+
+  /* Primary Electric Orange (replacing Cyan from FHE Liar's Dice) */
+  --accent-orange: #ea580c;
+  --accent-orange-bright: #f97316;
+  --accent-amber: #f59e0b;
+  --on-orange: #ffffff;
+
+  /* State Alerts */
+  --state-warning: #fb7185;
+  --state-success: #4ade80;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #05070d;
+  color: var(--foreground);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* FHE Liar's Dice .panel styling */
+.panel {
+  border: 1px solid var(--panel-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  background: rgba(17, 21, 26, 0.75);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.panel-subtle {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(13, 17, 23, 0.65);
+  backdrop-filter: blur(6px);
+  border-radius: 0.75rem;
+}
+
+/* Glowing text utilities */
+.glow-text-orange {
+  text-shadow: 0 0 18px rgba(249, 115, 22, 0.6);
+}
+
+.glow-text-warning {
+  text-shadow: 0 0 18px rgba(251, 113, 133, 0.6);
+}
+
+/* 3D Translucent Orange Acrylic Dice (Matching FHE 3D look in Orange) */
+.dice-3d-orange {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.95) 0%, rgba(234, 88, 12, 0.92) 50%, rgba(180, 50, 10, 0.96) 100%);
+  border: 1px solid rgba(254, 215, 170, 0.5);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.65),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
+    0 12px 20px -3px rgba(0, 0, 0, 0.75),
+    0 0 14px rgba(249, 115, 22, 0.35);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dice-3d-orange::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.dice-3d-orange:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.55),
+    0 16px 26px -3px rgba(0, 0, 0, 0.85),
+    0 0 22px rgba(249, 115, 22, 0.6);
+}
+
+.dice-3d-orange.is-highlighted {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.9),
+    0 0 22px rgba(251, 191, 36, 0.8),
+    0 14px 24px -3px rgba(0, 0, 0, 0.9);
+  transform: translateY(-3px) scale(1.06);
+}
+
+/* Recessed circular pip dots */
+.pip-dot {
+  background-color: #ffffff;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.pip-dot-wild {
+  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 100%);
+  box-shadow: 0 0 8px #fbbf24, inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* FHE 2D Dice Tile representation (clean rounded white tiles) */
+.die-tile-2d {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.die-tile-2d .pip-black {
+  background-color: #0b0f19;
+  border-radius: 50%;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #05070d;
+}
+::-webkit-scrollbar-thumb {
+  background: #1c2126;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #28313a;
+}

@@ -1,0 +1,21 @@
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+bluff = "BvKkFUEdiin8KcF6m9CBqYoN9FncGFFy4cxhe5QZSvWN"
+
+[programs.devnet]
+bluff = "BvKkFUEdiin8KcF6m9CBqYoN9FncGFFy4cxhe5QZSvWN"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]
