@@ -45,6 +45,11 @@ export function Seats({
               >
                 {name}
               </span>
+              {name !== shortKey(key) && name !== "You" && (
+                <span className="text-[10px] font-mono text-[#6b7362] block truncate">
+                  {shortKey(key)}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5 text-xs font-semibold">

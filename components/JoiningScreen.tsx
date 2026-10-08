@@ -14,6 +14,9 @@ export function JoiningScreen({
   busy,
   callsign,
   onCallsignChange,
+  nameOf,
+  you,
+  balance,
 }: {
   preview: RoomState;
   vote: Ending;
@@ -23,6 +26,9 @@ export function JoiningScreen({
   busy: boolean;
   callsign: string;
   onCallsignChange: (name: string) => void;
+  nameOf?: (key: string) => string;
+  you?: string;
+  balance?: number;
 }) {
   const stakeSol = (Number(preview.stake) / 1e9).toFixed(3);
   const potSol = ((Number(preview.stake) * preview.seats.length) / 1e9).toFixed(3);
@@ -67,7 +73,7 @@ export function JoiningScreen({
         <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
           WHO IS IN
         </span>
-        <Seats room={preview} />
+        <Seats room={preview} you={you} nameOf={nameOf} />
       </div>
 
       {/* Callsign / Player Name */}
@@ -89,6 +95,18 @@ export function JoiningScreen({
       <EndingTally room={preview} />
 
       <EndingPick value={vote} onChange={onVoteChange} disabled={busy} />
+
+      {/* Low balance notice banner */}
+      {balance !== undefined && balance < 0.02 && (
+        <div className="p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-2xl text-xs text-amber-200 space-y-1">
+          <div className="font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <span>Notice</span>
+          </div>
+          <p className="leading-relaxed">
+            Taking a seat costs about 0.02 SOL on devnet (stake + session gas). This wallet has <strong className="text-amber-100 font-mono">{balance.toFixed(3)} SOL</strong>. Use the <strong className="text-[#FBD53D] font-bold">+1 SOL</strong> button above.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-3 pt-2">
         <Button

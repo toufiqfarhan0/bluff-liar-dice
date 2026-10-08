@@ -206,9 +206,12 @@ export default function BluffApp() {
       if (key === wallet?.address) return callsign || "You";
       if (playerNames[key]) return playerNames[key];
       const bot = bots.find((b) => b.keypair.publicKey.toBase58() === key);
-      return bot ? bot.name : shortKey(key);
+      if (bot) return bot.name;
+      const hostKey = ref?.host.toBase58() || pending?.host.toBase58() || preview?.host?.toBase58();
+      if (key === hostKey) return playerNames[hostKey] || "Host";
+      return shortKey(key);
     },
-    [bots, wallet, callsign, playerNames],
+    [bots, wallet, callsign, playerNames, ref, pending, preview],
   );
 
   const createDicePlayers = useCallback(
@@ -287,12 +290,13 @@ export default function BluffApp() {
     (event: any) => {
       const payload = { ...event, _senderId: myTabId };
       broadcastRef.current?.postMessage(payload);
-      if (ref) {
-        const tableId = `${ref.host.toBase58()}_${ref.roomId}`;
+      const target = ref || pending;
+      if (target) {
+        const tableId = `${target.host.toBase58()}_${target.roomId}`;
         broadcastTableEvent(tableId, payload).catch(() => {});
       }
     },
-    [ref, myTabId],
+    [ref, pending, myTabId],
   );
 
   const applyIncomingEvent = useCallback(
@@ -325,20 +329,21 @@ export default function BluffApp() {
         addToast("success", "Game started! Round 1 is live!");
       } else if (msg.type === "REQUEST_SYNC") {
         const cur = gameStateRef.current;
-        if (cur.dicePlayers.length > 0) {
-          sendSyncEvent({
-            type: "SYNC_STATE",
-            players: cur.dicePlayers,
-            round: currentRound,
-            currentBid: cur.currentBid,
-            turnIndex: cur.turnIndex,
-            turnTimeLeft: cur.turnTimeLeft,
-            lastActions: cur.lastActions,
-            screen: cur.screen,
-            showdown: cur.showdown,
-            playerNames,
-          });
-        }
+        sendSyncEvent({
+          type: "SYNC_STATE",
+          players: cur.dicePlayers,
+          round: currentRound,
+          currentBid: cur.currentBid,
+          turnIndex: cur.turnIndex,
+          turnTimeLeft: cur.turnTimeLeft,
+          lastActions: cur.lastActions,
+          screen: cur.screen,
+          showdown: cur.showdown,
+          playerNames: {
+            ...playerNames,
+            ...(wallet?.address && callsign ? { [wallet.address]: callsign } : {}),
+          },
+        });
       } else if (msg.type === "SYNC_STATE") {
         if (msg.playerNames) {
           setPlayerNames((prev) => ({ ...prev, ...msg.playerNames }));
@@ -435,7 +440,8 @@ export default function BluffApp() {
   );
 
   useEffect(() => {
-    if (!ref) {
+    const activeTable = ref || pending;
+    if (!activeTable) {
       if (broadcastRef.current) {
         broadcastRef.current.close();
         broadcastRef.current = null;
@@ -443,7 +449,7 @@ export default function BluffApp() {
       return;
     }
 
-    const channelName = `bluff_table_${ref.host.toBase58()}_${ref.roomId}`;
+    const channelName = `bluff_table_${activeTable.host.toBase58()}_${activeTable.roomId}`;
     const channel = new BroadcastChannel(channelName);
     broadcastRef.current = channel;
 
@@ -451,7 +457,7 @@ export default function BluffApp() {
       applyIncomingEvent(event.data);
     };
 
-    const tableId = `${ref.host.toBase58()}_${ref.roomId}`;
+    const tableId = `${activeTable.host.toBase58()}_${activeTable.roomId}`;
 
     // Announce our callsign / name
     sendSyncEvent({
@@ -482,16 +488,27 @@ export default function BluffApp() {
       broadcastRef.current = null;
       clearInterval(pollInterval);
     };
-  }, [ref, screen, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
+  }, [ref, pending, screen, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
 
   useEffect(() => {
     if (!ref || !room) return;
 
-    // Never hijack lobby, opening room creation, reveal showdown, or finished screens
-    if (screen === "lobby" || screen === "opening" || screen === "reveal" || screen === "finished") return;
+    // Never hijack lobby, opening room creation, joining screen, reveal showdown, or finished screens
+    if (
+      screen === "lobby" ||
+      screen === "opening" ||
+      screen === "joining" ||
+      screen === "reveal" ||
+      screen === "finished"
+    )
+      return;
 
     if (room.phase === Phase.Open) {
-      if (screen !== "waiting") setScreen("waiting");
+      const isSeated = wallet && room.seats.some((s) => s.wallet.toBase58() === wallet.address);
+      const isHost = wallet && room.host.toBase58() === wallet.address;
+      if (isHost || isSeated) {
+        if (screen !== "waiting") setScreen("waiting");
+      }
       return;
     }
 
@@ -508,7 +525,7 @@ export default function BluffApp() {
     }
 
     if (room.phase === Phase.Playing) {
-      if (screen === "waiting" || screen === "joining") {
+      if (screen === "waiting") {
         setError(null);
         setScreen("playing");
       }
@@ -1178,6 +1195,16 @@ export default function BluffApp() {
         return;
       }
       const { host, roomId } = pending!;
+
+      const have = BigInt(await lamportsOf(BASE_RPC, wallet.publicKey));
+      const need = STAKE + JOIN_FUEL + 5_000_000n; // 0.01 stake + 0.005 session gas + fee margin (~0.02 SOL)
+
+      if (have < need) {
+        throw new Error(
+          `Opening a game costs about 0.14 SOL on devnet (stake + bots + rent). Taking a seat costs about 0.02 SOL (stake + session gas). This wallet has ${(Number(have) / 1e9).toFixed(3)} SOL. Use the +1 SOL button above.`,
+        );
+      }
+
       const key = bluff.room(host, roomId);
       const mine = await sessionFor(key.toBase58());
       setSession(mine);
@@ -1198,6 +1225,19 @@ export default function BluffApp() {
         status: "confirmed",
         time: Date.now(),
       });
+
+      // Announce callsign to peers
+      sendSyncEvent({
+        type: "SET_NAME",
+        address: wallet.address,
+        name: callsign || "Player",
+      });
+
+      await sleep(1500);
+      const data = await accountData(BASE_RPC, key);
+      if (data) {
+        setRoom(bluff.decodeRoom(data));
+      }
 
       setRef({ host, roomId });
       await refreshBalance();
@@ -1537,6 +1577,9 @@ export default function BluffApp() {
             busy={!!busy}
             callsign={callsign}
             onCallsignChange={handleCallsignChange}
+            nameOf={nameOf}
+            you={wallet?.address}
+            balance={balance}
           />
         )}
 
