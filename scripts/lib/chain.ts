@@ -127,6 +127,14 @@ export async function send(
 
 export async function confirm(url: string, signature: string, token?: string): Promise<void> {
   const conn = new Connection(authed(url, token), "confirmed");
+  for (let i = 0; i < 45; i++) {
+    const res = await conn.getSignatureStatus(signature, { searchTransactionHistory: true });
+    if (res?.value?.confirmationStatus === "confirmed" || res?.value?.confirmationStatus === "finalized") {
+      if (res.value.err) throw new Error(JSON.stringify(res.value.err));
+      return;
+    }
+    await sleep(1000);
+  }
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
   await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
 }

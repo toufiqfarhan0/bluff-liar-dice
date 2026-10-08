@@ -382,6 +382,10 @@ export class Bluff {
   }
 
   decodeRoom(data: Uint8Array): RoomState {
+    return Bluff.decodeRoom(data);
+  }
+
+  static decodeRoom(data: Uint8Array): RoomState {
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     let at = 8;
 

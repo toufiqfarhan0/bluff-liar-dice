@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 
 import { accountData, authenticate, confirm, delegationOf, loadKeypair, send } from "./lib/chain";
 
-const SPIKE = new PublicKey("BvKkFUEdiin8KcF6m9CBqYoN9FncGFFy4cxhe5QZSvWN");
+const SPIKE = new PublicKey("DtPSuiwYsauE5PwRWZfYpu2ZeCxZ7iunSZhXvHFWWfx7");
 const owner = loadKeypair(`${process.env.HOME}/.config/solana/id.json`);
 const probe = PublicKey.findProgramAddressSync(
   [Buffer.from("probe"), owner.publicKey.toBuffer()],
