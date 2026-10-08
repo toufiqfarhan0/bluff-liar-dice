@@ -134,6 +134,9 @@ export async function confirm(url: string, signature: string, token?: string): P
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function loadKeypair(path: string): Keypair {
-  const raw = JSON.parse(require("node:fs").readFileSync(path, "utf8"));
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  const resolved = path.replace(/^undefined/, home).replace(/^~/, home);
+  const raw = JSON.parse(require("node:fs").readFileSync(resolved, "utf8"));
   return Keypair.fromSecretKey(new Uint8Array(raw));
 }
+

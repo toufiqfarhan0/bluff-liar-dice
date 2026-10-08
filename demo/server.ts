@@ -1,5 +1,5 @@
 /**
- * Static server for the Herd mock.
+ * Static server for the Bluff mock.
  *
  * Deliberately dumb: there is no game logic here and no chain. Every player
  * except you is simulated in the browser, so the whole loop can be judged on
@@ -39,4 +39,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Herd mock  ->  http://localhost:${server.port}`);
+console.log(`Bluff mock  ->  http://localhost:${server.port}`);

@@ -9,7 +9,7 @@
 //! The finished room is written directly, which is what a commit from a rollup
 //! amounts to from the base layer's point of view.
 //!
-//! Run with:  cargo test -p herd --test phase8_settle
+//! Run with:  cargo test -p bluff --test payout
 
 mod common;
 
@@ -22,7 +22,7 @@ use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 
 use common::*;
-use bluff::error::HerdError;
+use bluff::error::BluffError;
 use bluff::state::{Ending, Outcome, Phase, Room, Seat, MAX_ANSWER, MAX_PLAYERS};
 
 const ROOM_ID: u64 = 11;
@@ -226,7 +226,7 @@ fn the_caller_cannot_choose_who_gets_paid() {
         &[ix_settle(&thief.pubkey(), &host.pubkey(), &[thief.pubkey()])],
     );
 
-    assert_program_error(&res, &code(HerdError::WrongWinners), "a stranger must not be paid");
+    assert_program_error(&res, &code(BluffError::WrongWinners), "a stranger must not be paid");
 }
 
 #[test]
@@ -242,7 +242,7 @@ fn a_real_winner_cannot_be_swapped_for_another_player() {
         &[ix_settle(&caller.pubkey(), &host.pubkey(), &[players[3].pubkey()])],
     );
 
-    assert_program_error(&res, &code(HerdError::WrongWinners), "a loser must not be paid");
+    assert_program_error(&res, &code(BluffError::WrongWinners), "a loser must not be paid");
 }
 
 #[test]
@@ -258,7 +258,7 @@ fn the_winner_list_must_be_complete() {
         &[ix_settle(&caller.pubkey(), &host.pubkey(), &[players[0].pubkey()])],
     );
 
-    assert_program_error(&res, &code(HerdError::WrongWinners), "one winner cannot take two shares");
+    assert_program_error(&res, &code(BluffError::WrongWinners), "one winner cannot take two shares");
 }
 
 #[test]
@@ -273,7 +273,7 @@ fn a_room_still_playing_cannot_be_settled() {
         &[ix_settle(&caller.pubkey(), &host.pubkey(), &[players[0].pubkey()])],
     );
 
-    assert_program_error(&res, &code(HerdError::NotFinished), "an unfinished room holds its pot");
+    assert_program_error(&res, &code(BluffError::NotFinished), "an unfinished room holds its pot");
 }
 
 #[test]
@@ -296,7 +296,7 @@ fn a_room_cannot_be_settled_twice() {
         &[ix_settle(&opportunist.pubkey(), &host.pubkey(), &winner)],
     );
 
-    assert_program_error(&again, &code(HerdError::AlreadySettled), "the pot pays out once");
+    assert_program_error(&again, &code(BluffError::AlreadySettled), "the pot pays out once");
 }
 
 #[test]

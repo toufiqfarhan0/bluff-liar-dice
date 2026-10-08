@@ -27,12 +27,12 @@ export function Seats({
         return (
           <div
             key={key}
-            className={`flex items-center gap-3 py-2 px-3.5 bg-[#140d09]/80 border rounded-xl transition-all duration-200 ${
+            className={`flex items-center gap-3 py-2 px-3.5 bg-[#171b14] border rounded-xl transition-all duration-200 ${
               !seat.alive
-                ? "opacity-40 border-[#331f15]"
+                ? "opacity-40 border-[#2a3122]"
                 : done
-                  ? "border-orange-500/40 bg-[#22140c]/80 shadow-[0_0_12px_-4px_rgba(249,115,22,0.25)]"
-                  : "border-[#331f15]"
+                  ? "border-[#FBD53D]/40 bg-[#201d10]/50 shadow-[0_0_12px_-4px_rgba(251, 213, 61,0.15)]"
+                  : "border-[#2a3122]"
             }`}
           >
             <Avatar who={key} name={name} size={32} out={!seat.alive} you={isYou} />
@@ -40,7 +40,7 @@ export function Seats({
             <div className="flex-1 min-w-0">
               <span
                 className={`text-sm font-semibold truncate block ${
-                  isYou ? "text-orange-400" : "text-[#faf5f0]"
+                  isYou ? "text-[#FBD53D]" : "text-[#f1f4ec]"
                 }`}
               >
                 {name}
@@ -50,18 +50,18 @@ export function Seats({
             <div className="flex items-center gap-1.5 text-xs font-semibold">
               {!seat.alive ? (
                 <>
-                  <XCircle className="w-3.5 h-3.5 text-red-400" />
-                  <span className="text-red-400">out</span>
+                  <XCircle className="w-3.5 h-3.5 text-[#f2603c]" />
+                  <span className="text-[#f2603c]">out</span>
                 </>
               ) : done ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="text-orange-400">ready</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#FBD53D]" />
+                  <span className="text-[#FBD53D]">locked in</span>
                 </>
               ) : (
                 <>
-                  <Clock className="w-3.5 h-3.5 text-[#6e5e54] animate-pulse" />
-                  <span className="text-[#6e5e54]">waiting…</span>
+                  <Clock className="w-3.5 h-3.5 text-[#6b7362] animate-pulse" />
+                  <span className="text-[#6b7362]">thinking…</span>
                 </>
               )}
             </div>

@@ -5,14 +5,14 @@ use anchor_lang::system_program::{transfer, Transfer};
 use ephemeral_rollups_sdk::anchor::delegate;
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
 
-use crate::error::HerdError;
+use crate::error::BluffError;
 use crate::state::{Answers, Ending, Outcome, Phase, Room, Seat, Vault, MAX_ANSWER, MAX_PLAYERS};
 use crate::{ANSWERS_SEED, EPHEMERAL_RENT_BUFFER, ROOM_SEED, VAULT_SEED};
 
 /// Fewest players a room can start with.
 ///
-/// Two people cannot form a herd - every round would be two groups of one, which
-/// culls everybody or nobody. Three is the smallest number where the mechanic
+/// Two people cannot form a dynamic table - every round would be two groups of one, which
+/// culls everybody or nobody. Three is the smallest number where the bluff mechanic
 /// exists at all.
 pub const MIN_PLAYERS: u8 = 3;
 
@@ -108,7 +108,7 @@ pub fn handle_create(
         EPHEMERAL_RENT_BUFFER,
     )?;
 
-    msg!("herd: room {} open, stake {}", room_id, stake);
+    msg!("bluff: room {} open, stake {}", room_id, stake);
     Ok(())
 }
 
@@ -140,14 +140,14 @@ pub fn handle_join(ctx: Context<JoinRoom>, session: Pubkey, ending_vote: Ending)
 
     {
         let room = &ctx.accounts.room;
-        require!(room.phase == Phase::Open, HerdError::RoomNotOpen);
-        require!((room.seat_count as usize) < MAX_PLAYERS, HerdError::RoomFull);
+        require!(room.phase == Phase::Open, BluffError::RoomNotOpen);
+        require!((room.seat_count as usize) < MAX_PLAYERS, BluffError::RoomFull);
         require!(
             !room
                 .seats()
                 .iter()
                 .any(|s| s.wallet == ctx.accounts.player.key()),
-            HerdError::AlreadySeated
+            BluffError::AlreadySeated
         );
     }
 
@@ -175,7 +175,7 @@ pub fn handle_join(ctx: Context<JoinRoom>, session: Pubkey, ending_vote: Ending)
     };
     room.seat_count += 1;
 
-    msg!("herd: seat {} taken by {}", index, ctx.accounts.player.key());
+    msg!("bluff: seat {} taken by {}", index, ctx.accounts.player.key());
     Ok(())
 }
 
@@ -233,7 +233,7 @@ pub struct LeaveRoom<'info> {
 pub fn handle_leave(ctx: Context<LeaveRoom>) -> Result<()> {
     require!(
         ctx.accounts.room.phase == Phase::Open,
-        HerdError::RoomNotOpen
+        BluffError::RoomNotOpen
     );
 
     let who = ctx.accounts.player.key();
@@ -242,7 +242,7 @@ pub fn handle_leave(ctx: Context<LeaveRoom>) -> Result<()> {
         .seats()
         .iter()
         .position(|s| s.wallet == who)
-        .ok_or(error!(HerdError::NotAPlayer))?;
+        .ok_or(error!(BluffError::NotAPlayer))?;
 
     // Seats close up behind the one that left, so seat order stays the order
     // people arrived in and nothing has to understand a hole in the middle.
@@ -258,14 +258,14 @@ pub fn handle_leave(ctx: Context<LeaveRoom>) -> Result<()> {
     **vault.try_borrow_mut_lamports()? = vault
         .lamports()
         .checked_sub(stake)
-        .ok_or(HerdError::Overflow)?;
+        .ok_or(BluffError::Overflow)?;
     let player = ctx.accounts.player.to_account_info();
     **player.try_borrow_mut_lamports()? = player
         .lamports()
         .checked_add(stake)
-        .ok_or(HerdError::Overflow)?;
+        .ok_or(BluffError::Overflow)?;
 
-    msg!("herd: seat {} left, {} refunded", seat, stake);
+    msg!("bluff: seat {} left, {} refunded", seat, stake);
     Ok(())
 }
 
@@ -282,10 +282,10 @@ pub fn handle_lock(ctx: Context<LockRoom>) -> Result<()> {
     let who = ctx.accounts.authority.key();
     require!(
         who == room.host || who == room.host_session,
-        HerdError::NotTheHost
+        BluffError::NotTheHost
     );
-    require!(room.phase == Phase::Open, HerdError::RoomNotOpen);
-    require!(room.seat_count >= MIN_PLAYERS, HerdError::TooFewPlayers);
+    require!(room.phase == Phase::Open, BluffError::RoomNotOpen);
+    require!(room.seat_count >= MIN_PLAYERS, BluffError::TooFewPlayers);
 
     // Count the votes cast at the door. Every seat paid the same stake and gets
     // the same one vote, and a tie falls to Split - the ending that takes
@@ -304,7 +304,7 @@ pub fn handle_lock(ctx: Context<LockRoom>) -> Result<()> {
     room.round_ends_at = 0;
 
     msg!(
-        "herd: room locked with {} players, ending {:?} ({} coin / {} split)",
+        "bluff: room locked with {} players, ending {:?} ({} coin / {} split)",
         room.seat_count,
         room.ending,
         coins,
@@ -361,13 +361,13 @@ pub fn handle_delegate(ctx: Context<DelegateRoom>, validator: Option<Pubkey>) ->
     let (host, host_session, room_id, dealt) = {
         let data = ctx.accounts.room.try_borrow_data()?;
         (
-            Pubkey::try_from(&data[HOST..HOST + 32]).map_err(|_| error!(HerdError::NotAPlayer))?,
+            Pubkey::try_from(&data[HOST..HOST + 32]).map_err(|_| error!(BluffError::NotAPlayer))?,
             Pubkey::try_from(&data[HOST_SESSION..HOST_SESSION + 32])
-                .map_err(|_| error!(HerdError::NotTheHost))?,
+                .map_err(|_| error!(BluffError::NotTheHost))?,
             u64::from_le_bytes(
                 data[ROOM_ID..ROOM_ID + 8]
                     .try_into()
-                    .map_err(|_| error!(HerdError::NotAPlayer))?,
+                    .map_err(|_| error!(BluffError::NotAPlayer))?,
             ),
             data[DEALT] == 1,
         )
@@ -381,7 +381,7 @@ pub fn handle_delegate(ctx: Context<DelegateRoom>, validator: Option<Pubkey>) ->
         &[ROOM_SEED, host.as_ref(), &room_id.to_le_bytes()],
         &crate::ID,
     );
-    require_keys_eq!(expected, room_key, HerdError::RoomLayoutDrift);
+    require_keys_eq!(expected, room_key, BluffError::RoomLayoutDrift);
 
     if dealt {
         // Nobody owns a public room, so anybody may hand it to the rollup - but
@@ -389,11 +389,11 @@ pub fn handle_delegate(ctx: Context<DelegateRoom>, validator: Option<Pubkey>) ->
         // let them name their own and read six strangers' sealed answers.
         require!(
             validator == Some(crate::PUBLIC_VALIDATOR),
-            HerdError::NotTheHost
+            BluffError::NotTheHost
         );
     } else {
         let who = ctx.accounts.authority.key();
-        require!(who == host || who == host_session, HerdError::NotTheHost);
+        require!(who == host || who == host_session, BluffError::NotTheHost);
     }
     ctx.accounts.delegate_room(
         &ctx.accounts.authority,
@@ -412,7 +412,7 @@ pub fn handle_delegate(ctx: Context<DelegateRoom>, validator: Option<Pubkey>) ->
         },
     )?;
 
-    msg!("herd: room and answers delegated, validator {:?}", validator);
+    msg!("bluff: room and answers delegated, validator {:?}", validator);
     Ok(())
 }
 

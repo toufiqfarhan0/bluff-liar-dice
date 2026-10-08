@@ -20,22 +20,21 @@ export function Button({
   const isDisabled = disabled || loading;
 
   const base =
-    "relative inline-flex items-center justify-center font-extrabold rounded-xl transition-all duration-200 select-none cursor-pointer active:scale-[0.99] disabled:cursor-not-allowed disabled:active:scale-100 uppercase tracking-wide text-xs sm:text-sm";
+    "relative inline-flex items-center justify-center font-extrabold rounded-full transition-all duration-200 select-none cursor-pointer active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100";
 
-  let variant =
-    "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-black py-3.5 px-6 shadow-[0_4px_20px_-3px_rgba(249,115,22,0.45)] hover:shadow-[0_4px_28px_-2px_rgba(249,115,22,0.65)] hover:from-orange-400 hover:via-amber-400 hover:to-orange-500 border border-amber-300/40";
+  let variant = "bg-[#FBD53D] text-[#141004] py-3.5 px-6 text-base tracking-wide shadow-[0_4px_20px_-4px_rgba(251, 213, 61,0.35)] hover:shadow-[0_4px_28px_-2px_rgba(251, 213, 61,0.5)] hover:bg-[#fce06b]";
 
   if (ghost) {
     variant =
-      "bg-[#130d08] border border-[#2b1a10] text-[#faf5f0] py-3 px-5 hover:bg-[#1f140c] hover:border-orange-500/40";
+      "bg-[#1f241a] border border-[#2a3122] text-[#f1f4ec] py-3 px-5 text-sm font-bold hover:bg-[#283022] hover:border-[#3f4a33]";
   } else if (danger) {
     variant =
-      "bg-gradient-to-r from-red-600 to-orange-600 text-white py-3 px-5 shadow-[0_4px_16px_-4px_rgba(220,38,38,0.4)] hover:from-red-500 hover:to-orange-500 border border-red-400/30";
+      "bg-[#f2603c] text-white py-3 px-5 text-sm font-bold shadow-[0_4px_16px_-4px_rgba(242,96,60,0.4)] hover:bg-[#ff714e]";
   }
 
   if (isDisabled) {
     variant =
-      "bg-[#110b07] border border-[#22140c] text-[#635349] py-3.5 px-6 shadow-none opacity-50";
+      "bg-[#171b14] border border-[#23291d] text-[#6b7362] py-3.5 px-6 text-sm font-semibold shadow-none opacity-60";
   }
 
   return (

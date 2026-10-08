@@ -27,10 +27,13 @@ import {
   send,
   sleep,
 } from "./lib/chain";
-import { Ending, Herd, Outcome, Phase } from "./lib/bluff";
+import { Ending, Bluff, Outcome, Phase } from "./lib/bluff";
 
-const idl = await Bun.file(new URL("../target/idl/herd.json", import.meta.url).pathname).json();
-const herd = new Herd(idl);
+import { fileURLToPath } from "url";
+
+const idl = await Bun.file(fileURLToPath(new URL("../target/idl/bluff.json", import.meta.url))).json();
+const bluff = new Bluff(idl);
+
 
 const host = loadKeypair(`${process.env.HOME}/.config/solana/id.json`);
 const ROOM_ID = BigInt(Date.now() % 1_000_000);
@@ -41,9 +44,9 @@ const ENDING = process.env.ENDING === "coin" ? Ending.Coin : Ending.Split;
 const STAKE = 10_000_000n; // 0.01 SOL
 const ROUND_SECONDS = 12;
 
-const room = herd.room(host.publicKey, ROOM_ID);
-const answers = herd.answers(room);
-const vault = herd.vault(room);
+const room = bluff.room(host.publicKey, ROOM_ID);
+const answers = bluff.answers(room);
+const vault = bluff.vault(room);
 
 const say = console.log;
 const ok = (s: string) => say(`   PASS  ${s}`);
@@ -59,7 +62,7 @@ say("[1] open a room and seat four players");
 const session = Keypair.generate();
 await sendBase(
   [
-    herd.createRoom(host.publicKey, ROOM_ID, STAKE, ROUND_SECONDS, session.publicKey),
+    bluff.createRoom(host.publicKey, ROOM_ID, STAKE, ROUND_SECONDS, session.publicKey),
     SystemProgram.transfer({
       fromPubkey: host.publicKey,
       toPubkey: session.publicKey,
@@ -93,7 +96,7 @@ fund.sign(host);
 await confirm(BASE_RPC, await conn.sendRawTransaction(fund.serialize()));
 
 for (const p of players) {
-  const ix = herd.joinRoom(
+  const ix = bluff.joinRoom(
     host.publicKey,
     ROOM_ID,
     p.wallet.publicKey,
@@ -116,7 +119,7 @@ for (const p of players) {
 say(`    four seats taken, vault holds ${await lamportsOf(BASE_RPC, vault)} lamports`);
 
 // The host's session key runs the room from here - no wallet involved.
-await sendSession([session], [herd.lockRoom(host.publicKey, ROOM_ID, session.publicKey)], "lock");
+await sendSession([session], [bluff.lockRoom(host.publicKey, ROOM_ID, session.publicKey)], "lock");
 await sleep(2500);
 
 /* ------------------------------------------------- hand it to the rollup */
@@ -124,7 +127,7 @@ await sleep(2500);
 say("\n[2] delegate the room and its answers to the TEE");
 await sendSession(
   [session],
-  [herd.delegateRoom(host.publicKey, ROOM_ID, session.publicKey, TEE_VALIDATOR)],
+  [bluff.delegateRoom(host.publicKey, ROOM_ID, session.publicKey, TEE_VALIDATOR)],
   "delegate",
 );
 await sleep(3000);
@@ -139,7 +142,7 @@ const ER = status.fqdn.replace(/\/$/, "");
 const token = await authenticate(ER, session);
 
 say("\n[3] seal the answers");
-await sendER([herd.sealRoom(host.publicKey, ROOM_ID)], [session], "seal");
+await sendER([bluff.sealRoom(host.publicKey, ROOM_ID)], [session], "seal");
 await sleep(2000);
 
 const sealedRead = await accountData(ER, answers, token);
@@ -164,7 +167,7 @@ const WORDS = [
 ];
 
 for (let round = 1; round <= 8; round++) {
-  const before = herd.decodeRoom((await accountData(ER, room, token))!);
+  const before = bluff.decodeRoom((await accountData(ER, room, token))!);
   if (before.phase !== Phase.Playing) break;
 
   const alive = before.seats.filter((s) => s.alive);
@@ -174,7 +177,7 @@ for (let round = 1; round <= 8; round++) {
   for (let i = 0; i < players.length; i++) {
     const seat = before.seats[i];
     if (!seat.alive) continue;
-    const ix = herd.submitAnswer(
+    const ix = bluff.submitAnswer(
       host.publicKey,
       ROOM_ID,
       players[i].session.publicKey,
@@ -184,7 +187,7 @@ for (let round = 1; round <= 8; round++) {
   }
 
   // What the other players can see while the window is open.
-  const mid = herd.decodeRoom((await accountData(ER, room, token))!);
+  const mid = bluff.decodeRoom((await accountData(ER, room, token))!);
   const sealedCount = mid.seats.filter(
     (s) => s.hasAnswered && s.answeredRound === mid.round,
   ).length;
@@ -197,16 +200,16 @@ for (let round = 1; round <= 8; round++) {
   const wait = Number(mid.roundEndsAt) - now + 2;
   if (wait > 0) await sleep(wait * 1000);
 
-  await sendER([herd.closeRound(host.publicKey, ROOM_ID, session.publicKey, round)], [session], "close");
+  await sendER([bluff.closeRound(host.publicKey, ROOM_ID, session.publicKey, round)], [session], "close");
 
   // Scoring happens in that transaction now - there is no oracle to wait for
   // unless the room has reached two and voted to flip for it.
-  let after = herd.decodeRoom((await accountData(ER, room, token))!);
+  let after = bluff.decodeRoom((await accountData(ER, room, token))!);
   if (after.awaitingCoin) {
     say("    two left - waiting on the coin");
     for (let i = 0; i < 20; i++) {
       await sleep(1500);
-      after = herd.decodeRoom((await accountData(ER, room, token))!);
+      after = bluff.decodeRoom((await accountData(ER, room, token))!);
       if (!after.awaitingCoin) break;
     }
     if (after.awaitingCoin) {
@@ -228,7 +231,7 @@ for (let round = 1; round <= 8; round++) {
 
 /* --------------------------------------------------------------- payout */
 
-const finished = herd.decodeRoom((await accountData(ER, room, token))!);
+const finished = bluff.decodeRoom((await accountData(ER, room, token))!);
 if (finished.phase !== Phase.Finished) {
   bad(`the game did not finish (phase ${finished.phase})`);
 } else {
@@ -237,7 +240,7 @@ if (finished.phase !== Phase.Finished) {
   // Deliberately not the host's key. Whoever is left standing finishes the game
   // and collects, using the session key funded when they took their seat - the
   // host may have been out for six rounds and closed the app.
-  const stillIn = herd
+  const stillIn = Bluff
     .decodeRoom((await accountData(ER, room, token))!)
     .seats.filter((seat) => seat.alive)
     .map((seat) => seat.wallet.toBase58());
@@ -246,13 +249,13 @@ if (finished.phase !== Phase.Finished) {
   say(`    settled by ${champion.wallet.publicKey.toBase58().slice(0, 8)}…, a player, not the host`);
 
   await sendER(
-    [herd.finishRoom(host.publicKey, ROOM_ID, champion.session.publicKey)],
+    [bluff.finishRoom(host.publicKey, ROOM_ID, champion.session.publicKey)],
     [champion.session],
     "finish",
   );
   await sleep(14000);
 
-  const onBase = herd.decodeRoom((await accountData(BASE_RPC, room))!);
+  const onBase = bluff.decodeRoom((await accountData(BASE_RPC, room))!);
   const winners = onBase.seats.filter((s) => s.alive).map((s) => s.wallet);
   const wanted = ENDING === Ending.Coin ? 1 : 2;
   say(
@@ -281,7 +284,7 @@ if (finished.phase !== Phase.Finished) {
   const before = await Promise.all(winners.map((w) => lamportsOf(BASE_RPC, w)));
   await sendSession(
     [champion.session],
-    [herd.settle(host.publicKey, ROOM_ID, champion.session.publicKey, winners)],
+    [bluff.settle(host.publicKey, ROOM_ID, champion.session.publicKey, winners)],
     "settle",
   );
 

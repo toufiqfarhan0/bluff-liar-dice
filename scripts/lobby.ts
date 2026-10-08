@@ -7,10 +7,10 @@
  */
 import { Keypair, PublicKey, SystemProgram, Transaction, Connection } from "@solana/web3.js";
 import { BASE_RPC, accountData, confirm, lamportsOf, loadKeypair, send, sleep } from "./lib/chain";
-import { Ending, Herd, Phase } from "./lib/bluff";
+import { Ending, Bluff, Phase } from "./lib/bluff";
 import idl from "./idl.json";
 
-const herd = new Herd(idl);
+const bluff = new Bluff(idl);
 const payer = loadKeypair(`${process.env.HOME}/.config/solana/id.json`);
 const STAKE = 10_000_000n;
 const conn = new Connection(BASE_RPC, "confirmed");
@@ -18,8 +18,8 @@ const conn = new Connection(BASE_RPC, "confirmed");
 const ok = (m: string) => console.log(`   PASS  ${m}`);
 const bad = (m: string) => console.log(`   FAIL  ${m}`);
 
-const queue = herd.queue(STAKE);
-const qvault = herd.queueVault(queue);
+const queue = bluff.queue(STAKE);
+const qvault = bluff.queueVault(queue);
 console.log(`queue  ${queue.toBase58()}`);
 
 async function fire(signers: Keypair[], ixs: any[], label: string) {
@@ -35,7 +35,7 @@ async function fire(signers: Keypair[], ixs: any[], label: string) {
 
 // The line and the tables are built once and reused for every game after this.
 if (!(await accountData(BASE_RPC, queue))) {
-  await fire([payer], [herd.openQueue(payer.publicKey, STAKE, 30)], "open queue");
+  await fire([payer], [bluff.openQueue(payer.publicKey, STAKE, 30)], "open queue");
   console.log("  line opened");
 }
 
@@ -43,25 +43,25 @@ if (!(await accountData(BASE_RPC, queue))) {
 // Devnet has leftovers from earlier runs. A line that is already full would
 // refuse the twelve this run is about to add, so clear it out first.
 {
-  const before = herd.decodeQueue((await accountData(BASE_RPC, queue))!);
+  const before = bluff.decodeQueue((await accountData(BASE_RPC, queue))!);
   if (before.count > 0) {
     console.log(`  clearing ${before.count} left over from an earlier run`);
     let spare = 0n;
-    while (herd.decodeQueue((await accountData(BASE_RPC, queue))!).count >= 6) {
+    while (bluff.decodeQueue((await accountData(BASE_RPC, queue))!).count >= 6) {
       while (true) {
-        const data = await accountData(BASE_RPC, herd.publicRoom(STAKE, spare));
+        const data = await accountData(BASE_RPC, bluff.publicRoom(STAKE, spare));
         if (!data) {
-          await fire([payer], [herd.openPublicRoom(payer.publicKey, STAKE, spare)], "spare");
+          await fire([payer], [bluff.openPublicRoom(payer.publicKey, STAKE, spare)], "spare");
           break;
         }
-        const st = herd.decodeRoom(data);
+        const st = bluff.decodeRoom(data);
         if (st.phase === Phase.Open || st.phase === Phase.Settled) break;
         spare += 1n;
       }
-      await fire([payer], [herd.deal(payer.publicKey, STAKE, spare, 3)], "drain");
+      await fire([payer], [bluff.deal(payer.publicKey, STAKE, spare, 3)], "drain");
       for (let i = 0; i < 25; i++) {
         await sleep(1500);
-        if (!herd.decodeQueue((await accountData(BASE_RPC, queue))!).awaitingDeal) break;
+        if (!bluff.decodeQueue((await accountData(BASE_RPC, queue))!).awaitingDeal) break;
       }
       spare += 1n;
     }
@@ -77,14 +77,14 @@ if (!(await accountData(BASE_RPC, queue))) {
  */
 const tables: bigint[] = [];
 for (let index = 0n; index < 16n && tables.length < 2; index++) {
-  const data = await accountData(BASE_RPC, herd.publicRoom(STAKE, index));
+  const data = await accountData(BASE_RPC, bluff.publicRoom(STAKE, index));
   if (!data) {
-    await fire([payer], [herd.openPublicRoom(payer.publicKey, STAKE, index)], `room ${index}`);
+    await fire([payer], [bluff.openPublicRoom(payer.publicKey, STAKE, index)], `room ${index}`);
     console.log(`  public room ${index} built`);
     tables.push(index);
     continue;
   }
-  const state = herd.decodeRoom(data);
+  const state = bluff.decodeRoom(data);
   if (state.phase === Phase.Open || state.phase === Phase.Settled) {
     tables.push(index);
   }
@@ -116,25 +116,25 @@ await confirm(BASE_RPC, await conn.sendRawTransaction(fund.serialize()));
 for (const p of people) {
   await fire(
     [p.wallet],
-    [herd.enterQueue(p.wallet.publicKey, STAKE, p.session.publicKey, Ending.Split)],
+    [bluff.enterQueue(p.wallet.publicKey, STAKE, p.session.publicKey, Ending.Split)],
     "enter",
   );
 }
-const line = herd.decodeQueue((await accountData(BASE_RPC, queue))!);
+const line = bluff.decodeQueue((await accountData(BASE_RPC, queue))!);
 console.log(`    ${line.count} waiting, vault holds ${await lamportsOf(BASE_RPC, qvault)}`);
 
 console.log("\n[2] the oracle deals two rooms");
 const dealt: string[][] = [];
 for (const index of tables) {
-  const room = herd.publicRoom(STAKE, index);
-  await fire([payer], [herd.deal(payer.publicKey, STAKE, index, Number(index) + 7)], `deal ${index}`);
+  const room = bluff.publicRoom(STAKE, index);
+  await fire([payer], [bluff.deal(payer.publicKey, STAKE, index, Number(index) + 7)], `deal ${index}`);
 
   let state = null;
   for (let i = 0; i < 25; i++) {
     await sleep(1500);
-    const q = herd.decodeQueue((await accountData(BASE_RPC, queue))!);
+    const q = bluff.decodeQueue((await accountData(BASE_RPC, queue))!);
     if (!q.awaitingDeal) {
-      state = herd.decodeRoom((await accountData(BASE_RPC, room))!);
+      state = bluff.decodeRoom((await accountData(BASE_RPC, room))!);
       break;
     }
   }
@@ -145,7 +145,7 @@ for (const index of tables) {
   const seats = state.seats.map((s) => s.wallet.toBase58());
   dealt.push(seats);
   console.log(
-    `    room ${index}: ${seats.length} seated, phase ${Phase[state.phase]}, vault ${await lamportsOf(BASE_RPC, herd.vault(room))}`,
+    `    room ${index}: ${seats.length} seated, phase ${Phase[state.phase]}, vault ${await lamportsOf(BASE_RPC, bluff.vault(room))}`,
   );
   console.log(`      ${seats.map((k) => k.slice(0, 6)).join("  ")}`);
 }
@@ -166,7 +166,7 @@ if (new Set(everyone).size === 12 && everyone.length === 12) {
 const together = seatedIn(order[0]) === seatedIn(order[1]);
 console.log(`    the two who joined back to back landed ${together ? "TOGETHER" : "apart"}`);
 
-const left = herd.decodeQueue((await accountData(BASE_RPC, queue))!);
+const left = bluff.decodeQueue((await accountData(BASE_RPC, queue))!);
 console.log(`    line now holds ${left.count}, vault ${await lamportsOf(BASE_RPC, qvault)}`);
 if (left.count === 0) ok("the line emptied into the rooms");
 else bad(`${left.count} still waiting`);

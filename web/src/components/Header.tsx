@@ -1,127 +1,91 @@
 import React from "react";
 import { ConnectedWallet } from "../lib/wallet";
+import { Wordmark } from "./Wordmark";
 import { shortKey } from "./Avatar";
-import { Flame, LogOut } from "lucide-react";
-
-export type NavTab = "home" | "rules";
+import { Flame, LogOut, ShieldCheck, Wallet } from "lucide-react";
 
 export function Header({
   wallet,
   balance,
-  activeTab,
-  onSelectTab,
   onOpenWallet,
   onDisconnect,
+  onOpenFairness,
+  onGoHome,
   onAirdrop,
 }: {
   wallet: ConnectedWallet | null;
   balance: number | null;
-  activeTab: NavTab;
-  onSelectTab: (tab: NavTab) => void;
   onOpenWallet: () => void;
   onDisconnect: () => void;
+  onOpenFairness: () => void;
+  onGoHome: () => void;
   onAirdrop?: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/5 bg-[#05070d]/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-        {/* Brand logo & title matching FHE Liar's Dice */}
+    <header className="w-full flex items-center justify-between py-4 px-4 sm:px-6 border-b border-[#2a3122]/50 bg-[#0c0f0b]/80 backdrop-blur-md sticky top-0 z-40">
+      <div className="flex items-center gap-4">
         <button
-          onClick={() => onSelectTab("home")}
-          className="flex items-center gap-2.5 text-sm font-semibold tracking-wide text-slate-100 hover:text-white transition cursor-pointer"
+          onClick={onGoHome}
+          className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 64 64"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <rect
-              x="4"
-              y="4"
-              width="56"
-              height="56"
-              rx="14"
-              fill="#070a0f"
-              stroke="#f97316"
-              strokeWidth="4"
-            />
-            <circle cx="32" cy="32" r="9" fill="#f97316" />
-          </svg>
-          <span className="font-bold tracking-wider">BLUFF LIAR'S DICE</span>
+          <Wordmark small />
         </button>
 
-        {/* Navigation Links: Home, Rules */}
-        <nav className="order-3 flex w-full gap-5 text-sm text-slate-400 sm:order-none sm:w-auto sm:gap-6">
-          <button
-            onClick={() => onSelectTab("home")}
-            className={`transition cursor-pointer ${
-              activeTab === "home"
-                ? "text-slate-100 font-medium"
-                : "text-slate-400 hover:text-slate-100"
-            }`}
-          >
-            Home
-          </button>
-          <button
-            onClick={() => onSelectTab("rules")}
-            className={`transition cursor-pointer ${
-              activeTab === "rules"
-                ? "text-slate-100 font-medium"
-                : "text-slate-400 hover:text-slate-100"
-            }`}
-          >
-            Rules
-          </button>
-        </nav>
+        <button
+          onClick={onOpenFairness}
+          className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-[#98a08e] hover:text-[#FBD53D] bg-[#171b14] border border-[#2a3122] px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-[#FBD53D]" />
+          <span>Why this is fair</span>
+        </button>
+      </div>
 
-        {/* Right side Wallet & Status */}
-        <div className="flex items-center gap-2.5">
-          {wallet ? (
-            <>
-              {onAirdrop && (
-                <button
-                  onClick={onAirdrop}
-                  title="Airdrop 1 Devnet SOL"
-                  className="hidden sm:flex items-center gap-1 text-xs font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/30 hover:border-orange-500 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                >
-                  <Flame className="w-3.5 h-3.5 text-orange-400" />
-                  <span>+1 SOL</span>
-                </button>
-              )}
-
+      <div className="flex items-center gap-2.5">
+        {wallet ? (
+          <>
+            {/* Quick devnet airdrop button if low on balance */}
+            {onAirdrop && (
               <button
-                onClick={onOpenWallet}
-                className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-white/20 transition cursor-pointer"
+                onClick={onAirdrop}
+                title="Airdrop 1 Devnet SOL"
+                className="hidden sm:flex items-center gap-1 text-xs font-bold text-[#FBD53D] bg-[#201d10] border border-[#FBD53D]/30 hover:border-[#FBD53D] px-2.5 py-1.5 rounded-full transition-all cursor-pointer"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span className="font-mono text-orange-400 font-bold tabular-nums">
-                  {balance !== null ? `${balance.toFixed(2)} ◎` : "… ◎"}
-                </span>
-                <span className="text-slate-400 hidden sm:inline">
-                  · {shortKey(wallet.address)}
-                </span>
+                <Flame className="w-3.5 h-3.5" />
+                <span>+1 SOL</span>
               </button>
+            )}
 
-              <button
-                onClick={onDisconnect}
-                title="Disconnect"
-                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <button
+            {/* Balance & Wallet details */}
+            <div
               onClick={onOpenWallet}
-              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-600/30 transition hover:bg-orange-500 cursor-pointer"
+              className="flex items-center gap-2 bg-[#171b14] border border-[#2a3122] hover:border-[#3f4a33] px-3.5 py-1.5 rounded-full cursor-pointer transition-all"
             >
-              Connect Wallet
+              <div className="w-2 h-2 rounded-full bg-[#FBD53D] shadow-[0_0_6px_#FBD53D]" />
+              <span className="font-extrabold text-xs text-[#f1f4ec] tabular-nums">
+                {balance !== null ? `${balance.toFixed(2)} ◎` : "… ◎"}
+              </span>
+              <span className="text-xs font-semibold text-[#98a08e] hidden sm:inline">
+                · {shortKey(wallet.address)}
+              </span>
+            </div>
+
+            <button
+              onClick={onDisconnect}
+              title="Disconnect"
+              className="p-2 text-[#6b7362] hover:text-[#f2603c] hover:bg-[#1f241a] rounded-full transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
-          )}
-        </div>
+          </>
+        ) : (
+          <button
+            onClick={onOpenWallet}
+            className="flex items-center gap-2 bg-[#FBD53D] hover:bg-[#fce06b] text-[#141004] text-xs font-extrabold px-4 py-2 rounded-full shadow-[0_0_15px_-3px_rgba(251, 213, 61,0.35)] transition-all cursor-pointer"
+          >
+            <Wallet className="w-3.5 h-3.5" />
+            <span>Connect Wallet</span>
+          </button>
+        )}
       </div>
     </header>
   );

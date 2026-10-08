@@ -1,5 +1,5 @@
 /**
- * Herd — clickable mock.
+ * Bluff — clickable mock.
  *
  * Everything here is fake: the other five players, their answers, the pot, the
  * payouts. The point is to judge the loop by feel before committing to a
@@ -11,7 +11,7 @@
  * confidential state rather than a public chain.
  *
  * Format: everyone stakes once, then each round the smallest group is culled.
- * You stay in by staying with the herd. Last one standing takes the pot.
+ * You stay in by out-bluffing the table. Last one standing takes the pot.
  */
 
 const STAKE = 0.05;
@@ -290,7 +290,7 @@ function renderReveal(sorted, eliminated, stalemate, questionText) {
   if (stalemate) {
     verdict.className = "verdict roll";
     verdict.innerHTML = `
-      <h3>No herd</h3>
+      <h3>No bluff</h3>
       <p>Nobody clustered, so nobody strayed. New question, same ${survivors.length} players.</p>`;
   } else if (youJustDied) {
     verdict.className = "verdict lose";
@@ -300,7 +300,7 @@ function renderReveal(sorted, eliminated, stalemate, questionText) {
   } else if (youAlive) {
     verdict.className = "verdict win";
     verdict.innerHTML = `
-      <h3>Still with the herd</h3>
+      <h3>Still in the bluff</h3>
       <p>${eliminated.size} out. ${survivors.length} left, playing for ${sol(pot())}.</p>`;
   } else {
     verdict.className = "verdict lose";
@@ -337,7 +337,7 @@ function renderFinal(survivors) {
     ? survivors.length === 1
       ? "Last one standing"
       : "You made it to the end"
-    : "The herd moved on without you";
+    : "The bluff moved on without you";
 
   $("final-you").innerHTML = youWon
     ? `<div class="lbl">you staked ${sol(STAKE)}</div>

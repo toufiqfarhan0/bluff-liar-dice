@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum HerdError {
+pub enum BluffError {
     #[msg("This room is not taking players")]
     RoomNotOpen,
     #[msg("This room is full")]

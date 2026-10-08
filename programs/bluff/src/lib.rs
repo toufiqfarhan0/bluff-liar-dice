@@ -1,4 +1,4 @@
-//! Herd - you win by saying what everyone else says.
+//! Bluff - you win by saying what everyone else says.
 //!
 //! A question goes out, everyone answers at the same time in secret, and then a
 //! group is culled. Last one standing takes the pot.
@@ -64,7 +64,7 @@ pub const EPHEMERAL_RENT_BUFFER: u64 = 200_000;
 
 #[ephemeral_rollups_sdk::anchor::ephemeral]
 #[program]
-pub mod herd {
+pub mod bluff {
     use super::*;
 
     /* ------------------------------------------------------------ Solana */
@@ -77,7 +77,7 @@ pub mod herd {
         round_seconds: u16,
         host_session: Pubkey,
     ) -> Result<()> {
-        room::handle_create(ctx, room_id, stake, round_seconds, host_session)
+        table::handle_create(ctx, room_id, stake, round_seconds, host_session)
     }
 
     /// Take a seat and pay the stake. Base layer.
@@ -89,19 +89,19 @@ pub mod herd {
     /// down to two: share the pot, or let the oracle pick one. Majority at the
     /// door decides it for the whole table, ties go to a split.
     pub fn join_room(ctx: Context<JoinRoom>, session: Pubkey, ending_vote: Ending) -> Result<()> {
-        room::handle_join(ctx, session, ending_vote)
+        table::handle_join(ctx, session, ending_vote)
     }
 
     /* ------------------------------------------------------- public rooms */
 
     /// Open the line for a given stake. Once per price.
     pub fn open_queue(ctx: Context<OpenQueue>, stake: u64, round_seconds: u16) -> Result<()> {
-        queue::handle_open_queue(ctx, stake, round_seconds)
+        matchmaking::handle_open_queue(ctx, stake, round_seconds)
     }
 
     /// Build a public table. Once, ever - dealt rooms are reused.
     pub fn open_public_room(ctx: Context<OpenPublicRoom>, index: u64) -> Result<()> {
-        queue::handle_open_public_room(ctx, index)
+        matchmaking::handle_open_public_room(ctx, index)
     }
 
     /// Pay a stake and wait to be put somewhere you did not choose.
@@ -110,34 +110,34 @@ pub mod herd {
         session: Pubkey,
         ending_vote: Ending,
     ) -> Result<()> {
-        queue::handle_enter_queue(ctx, session, ending_vote)
+        matchmaking::handle_enter_queue(ctx, session, ending_vote)
     }
 
     /// Stop waiting, and take the stake back.
     pub fn leave_queue(ctx: Context<LeaveQueue>) -> Result<()> {
-        queue::handle_leave_queue(ctx)
+        matchmaking::handle_leave_queue(ctx)
     }
 
     /// Ask the oracle to fill a room from the line.
     pub fn deal(ctx: Context<Deal>, client_seed: u8) -> Result<()> {
-        queue::handle_deal(ctx, client_seed)
+        matchmaking::handle_deal(ctx, client_seed)
     }
 
     /// The oracle's answer: shuffle the line and seat the first six.
     pub fn callback_deal(ctx: Context<CallbackDeal>, randomness: [u8; 32]) -> Result<()> {
-        queue::handle_callback_deal(ctx, randomness)
+        matchmaking::handle_callback_deal(ctx, randomness)
     }
 
     /* ------------------------------------------------------ private rooms */
 
     /// Take your seat back and your stake with it. Base layer, open rooms only.
     pub fn leave_room(ctx: Context<LeaveRoom>) -> Result<()> {
-        room::handle_leave(ctx)
+        table::handle_leave(ctx)
     }
 
     /// Close the door and start round one. Base layer, host only.
     pub fn lock_room(ctx: Context<LockRoom>) -> Result<()> {
-        room::handle_lock(ctx)
+        table::handle_lock(ctx)
     }
 
     /// Hand the room and its answers to a rollup. Base layer.
@@ -146,19 +146,19 @@ pub mod herd {
     /// answers secret; on a plain rollup the room is fast but readable, which
     /// defeats the entire point of moving it.
     pub fn delegate_room(ctx: Context<DelegateRoom>, validator: Option<Pubkey>) -> Result<()> {
-        room::handle_delegate(ctx, validator)
+        table::handle_delegate(ctx, validator)
     }
 
     /* ------------------------------------------------------------ rollup */
 
     /// Seal the room so nobody can read the answers. Runs inside the rollup.
     pub fn seal_room(ctx: Context<SealRoom>) -> Result<()> {
-        play::handle_seal(ctx)
+        round::handle_seal(ctx)
     }
 
     /// Lock in an answer. Runs inside the rollup, signed by the session key.
     pub fn submit_answer(ctx: Context<SubmitAnswer>, answer: Vec<u8>) -> Result<()> {
-        play::handle_submit(ctx, answer)
+        round::handle_submit(ctx, answer)
     }
 
     /// Close the round and ask the oracle which way it is scored.
@@ -166,23 +166,23 @@ pub mod herd {
     /// Permissionless once the clock runs out, so a room cannot be held open by
     /// a player who benefits from waiting.
     pub fn close_round(ctx: Context<CloseRound>, client_seed: u8) -> Result<()> {
-        play::handle_close(ctx, client_seed)
+        round::handle_close(ctx, client_seed)
     }
 
     /// The oracle's answer: draw the rule, group the answers, cull.
     pub fn callback_round(ctx: Context<CallbackRound>, randomness: [u8; 32]) -> Result<()> {
-        play::handle_callback(ctx, randomness)
+        round::handle_callback(ctx, randomness)
     }
 
     /// Push the finished room back to Solana so the pot can be paid.
     pub fn finish_room(ctx: Context<FinishRoom>) -> Result<()> {
-        play::handle_finish(ctx)
+        round::handle_finish(ctx)
     }
 
     /* ------------------------------------------------------------ payout */
 
     /// Pay the survivors. Base layer.
     pub fn settle(ctx: Context<Settle>) -> Result<()> {
-        settle::handle_settle(ctx)
+        payout::handle_settle(ctx)
     }
 }

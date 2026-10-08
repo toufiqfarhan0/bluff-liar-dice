@@ -4,7 +4,7 @@
 
 import idl from "./idl.json";
 
-const HERD_ERRORS: string[] = ((idl as any).errors ?? []).map((e: { name: string }) => e.name);
+const BLUFF_ERRORS: string[] = ((idl as any).errors ?? []).map((e: { name: string }) => e.name);
 const FIRST_CODE = (idl as any).errors?.[0]?.code ?? 6000;
 
 const PLAIN: Record<string, string> = {
@@ -31,8 +31,8 @@ export function explainChainError(e: unknown): string | null {
   if (custom) {
     const value = custom[1].startsWith("0x") ? parseInt(custom[1], 16) : Number(custom[1]);
     const index = value - FIRST_CODE;
-    if (index >= 0 && index < HERD_ERRORS.length) {
-      const name = HERD_ERRORS[index];
+    if (index >= 0 && index < BLUFF_ERRORS.length) {
+      const name = BLUFF_ERRORS[index];
       return PLAIN[name] ?? `The program refused that: ${name}.`;
     }
     if (value === 1) {

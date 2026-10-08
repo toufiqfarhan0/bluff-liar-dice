@@ -1,10 +1,10 @@
-//! PHASE 2 - rooms, seats and stakes on Solana.
+//! Table Lifecycle - rooms, seats and stakes on Solana.
 //!
 //! No rollup here on purpose. If everything after this collapsed, what is proven
 //! here still stands: money goes into an account this program controls, and the
 //! rules about who may take a seat are enforced on the base layer.
 //!
-//! Run with:  cargo test -p herd --test phase2_room
+//! Run with:  cargo test -p bluff --test room_lifecycle
 
 mod common;
 
@@ -17,7 +17,7 @@ use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 
 use common::*;
-use bluff::error::HerdError;
+use bluff::error::BluffError;
 use bluff::state::{Ending, Phase, Room};
 
 const ROOM_ID: u64 = 7;
@@ -199,7 +199,7 @@ fn the_same_wallet_cannot_take_two_seats() {
     let again = ix_join(&host.pubkey(), &players[0].pubkey(), Keypair::new().pubkey());
     let res = send(&mut svm, &players[0], &[], &[again]);
 
-    assert_program_error(&res, &code(HerdError::AlreadySeated), "a wallet must not seat twice");
+    assert_program_error(&res, &code(BluffError::AlreadySeated), "a wallet must not seat twice");
 }
 
 /// The table decides its own ending at the door, and locking freezes it.
@@ -315,7 +315,7 @@ fn you_cannot_leave_once_the_game_has_started() {
     )
     .expect_err("a locked room must refuse");
     assert!(
-        format!("{err:?}").contains(&code(HerdError::RoomNotOpen)),
+        format!("{err:?}").contains(&code(BluffError::RoomNotOpen)),
         "expected RoomNotOpen, got {err:?}",
     );
 }
@@ -334,19 +334,19 @@ fn a_stranger_cannot_leave_a_room_they_never_joined() {
     )
     .expect_err("a stranger must be refused");
     assert!(
-        format!("{err:?}").contains(&code(HerdError::NotAPlayer)),
+        format!("{err:?}").contains(&code(BluffError::NotAPlayer)),
         "expected NotAPlayer, got {err:?}",
     );
 }
 
 #[test]
 fn a_room_needs_three_players_to_start() {
-    // Two people cannot form a herd: every round is two groups of one, which
+    // Two people cannot form a table: every round is two groups of one, which
     // culls everybody or nobody. Three is the smallest game that exists.
     let (mut svm, host, _, _) = seated(2);
 
     let res = send(&mut svm, &host, &[], &[ix_lock(&host.pubkey())]);
-    assert_program_error(&res, &code(HerdError::TooFewPlayers), "two players is not a game");
+    assert_program_error(&res, &code(BluffError::TooFewPlayers), "two players is not a game");
 }
 
 #[test]
@@ -370,7 +370,7 @@ fn only_the_host_can_lock_a_room() {
     ix.accounts[0].pubkey = players[0].pubkey();
     let res = send(&mut svm, &players[0], &[], &[ix]);
 
-    assert_program_error(&res, &code(HerdError::NotTheHost), "a player must not lock the room");
+    assert_program_error(&res, &code(BluffError::NotTheHost), "a player must not lock the room");
 }
 
 #[test]
@@ -439,7 +439,7 @@ fn a_locked_room_takes_no_more_players() {
         &[ix_join(&host.pubkey(), &latecomer.pubkey(), Keypair::new().pubkey())],
     );
 
-    assert_program_error(&res, &code(HerdError::RoomNotOpen), "a locked room is closed");
+    assert_program_error(&res, &code(BluffError::RoomNotOpen), "a locked room is closed");
 }
 
 #[test]
@@ -454,7 +454,7 @@ fn a_room_fills_up() {
         &[ix_join(&host.pubkey(), &latecomer.pubkey(), Keypair::new().pubkey())],
     );
 
-    assert_program_error(&res, &code(HerdError::RoomFull), "a thirteenth player must be refused");
+    assert_program_error(&res, &code(BluffError::RoomFull), "a thirteenth player must be refused");
 }
 
 #[test]

@@ -77,7 +77,7 @@ pub enum Phase {
 /// and half the time being the largest group is what kills you.
 /// How a room settles when it comes down to two.
 ///
-/// Two players carry no signal. "Match the herd" needs a herd, and with two
+/// Two players carry no signal. A bluff showdown needs table dynamics, and with two
 /// people left same-word and different-word are symmetric under both rules - no
 /// rule can separate them, so every heads-up round culls nobody. Something has
 /// to break the symmetry, and rather than picking one for everybody, the table
@@ -92,7 +92,7 @@ pub enum Ending {
 
 /// How a round ended.
 ///
-/// The rule itself never changes: the smallest group strayed from the herd and
+/// The rule itself never changes: the smallest group strayed from consensus and
 /// goes. This records whether that actually happened, because it cannot always
 /// - if every group is the same size then nobody is odd, and a round where
 /// nobody is odd has to say so rather than looking like a round that failed.
@@ -146,7 +146,7 @@ pub struct Room {
     /// sitting in it. None of them can move money.
     pub dealt: bool,
 
-    /// Whether the last two were separated by the coin rather than by the herd.
+    /// Whether the last two were separated by the coin rather than by table elimination.
     ///
     /// Worth a byte. Without it a player who reached the final two and lost
     /// cannot tell whether the room out-guessed them or a coin did, and "you

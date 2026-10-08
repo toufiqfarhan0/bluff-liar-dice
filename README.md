@@ -41,14 +41,14 @@ scripts/           IDL-driven client and test runs
 ## Running it
 
 ```bash
-anchor build && cargo test -p bluff   # 32 tests
-cd scripts && bun run game.ts         # the whole game, live on devnet
+anchor build && cargo test -p bluff   # 45 tests (16 unit + 29 integration)
+cd scripts && bun run session.ts         # the whole game, live on devnet
 cd web && bun run dev                 # the web app, at :5173
 ```
 
 ## Testing and Invariant Verification
 
-The on-chain protocol includes 32 deterministic tests running against the compiled BPF binary via LiteSVM (an in-memory Solana runtime). This executes transactions directly against the program bytecode in milliseconds without needing an external validator cluster.
+The on-chain protocol includes 45 deterministic tests (16 in-memory unit tests plus 29 integration tests running against the compiled BPF binary via LiteSVM). This executes transactions directly against the program bytecode in milliseconds without needing an external validator cluster.
 
 To execute the test suite:
 
@@ -59,7 +59,7 @@ cargo test -p bluff
 
 ### Test Coverage Breakdown
 
-1. **Room Lifecycle and Vault Constraints (`tests/phase2_room.rs` - 19 tests)**
+1. **Room Lifecycle and Vault Constraints (`tests/room_lifecycle.rs` - 19 tests)**
    - **Initial State**: Verifies new rooms initialize in the Open phase with exact stake and host parameters.
    - **Privacy Headroom**: Confirms the sealed answers account carries sufficient rent-exempt headroom to self-fund private rollup permissions.
    - **Vault Isolation**: Ensures stakes reside in a program-derived vault PDA that is never delegated to the rollup.
@@ -68,7 +68,7 @@ cargo test -p bluff
    - **State Locking**: Locks the room once round one begins, rejecting further joins and preventing mid-game exits.
    - **Session Key Authorization**: Validates that delegated session keys are tied to specific seats and cannot act on behalf of unauthorized wallets.
 
-2. **Settlement and Payout Safety (`tests/phase8_settle.rs` - 10 tests)**
+2. **Settlement and Payout Safety (`tests/settlement_tests.rs` - 10 tests)**
    - **Winner Payouts**: Single survivors collect the accumulated pot, while ties split proceeds evenly.
    - **Rent Exemption Invariant**: Proves the vault PDA remains exactly at its rent-exempt minimum after all payouts.
    - **Deadlock Refunds**: Fully refunds all seated participants if all players are eliminated simultaneously.
@@ -76,7 +76,7 @@ cargo test -p bluff
    - **Idempotency**: Prevents double-settlement on already paid-out rooms.
    - **Permissionless Trigger**: Allows any caller to trigger the payout as long as the payout recipients strictly match verified game survivors.
 
-3. **Core Instruction Logic (`src/instructions/` - 3 tests)**
-   - Verifies turn transitions, queue arithmetic, and state serialization.
+3. **Core Instruction Logic (`src/instructions/` - 16 unit tests)**
+   - Verifies round resolution, tiebreaks, queue arithmetic, and ephemeral delegate layout offsets.
 
 `ARCHITECTURE.md` records what was proven before any of this was written.

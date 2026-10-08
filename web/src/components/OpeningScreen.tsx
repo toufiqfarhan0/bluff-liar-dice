@@ -1,6 +1,7 @@
 import React from "react";
 import { Ending } from "../lib/bluff";
 import { EndingPick } from "./EndingPick";
+import { Button } from "./Button";
 import { ArrowLeft, Users } from "lucide-react";
 
 export function OpeningScreen({
@@ -21,55 +22,51 @@ export function OpeningScreen({
   const stakeSol = (Number(stake) / 1e9).toFixed(2);
 
   return (
-    <div className="w-full max-w-lg mx-auto px-4 py-8 space-y-6 text-left animate-in fade-in duration-200">
+    <div className="flex flex-col max-w-md w-full mx-auto space-y-6 animate-in fade-in duration-200">
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
           disabled={busy}
-          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-colors cursor-pointer border border-white/5"
+          className="p-2 rounded-full text-[#6b7362] hover:text-[#f1f4ec] hover:bg-[#1f241a] transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-slate-50">
-            Create Table
-          </h1>
-          <p className="text-xs text-slate-400">
-            Configure match rules for your table.
-          </p>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
+            CREATE GAME
+          </span>
+          <h2 className="text-2xl font-black italic tracking-tight text-[#f1f4ec]">
+            Your Room
+          </h2>
         </div>
       </div>
 
-      <div className="panel p-5 space-y-2">
-        <div className="flex items-center gap-2 text-orange-400 text-xs font-semibold">
+      <div className="p-4 bg-[#171b14] border border-[#2a3122] rounded-2xl space-y-2">
+        <div className="flex items-center gap-2 text-[#FBD53D] text-xs font-bold">
           <Users className="w-4 h-4" />
-          <span>6-Seat Table · AI Bot Practice Support</span>
+          <span>Multiplayer with Solo Bot Support</span>
         </div>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          {stakeSol} SOL buy-in per player. You can seat automated probability bots or share the invite code with friends.
+        <p className="text-xs text-[#98a08e] leading-relaxed">
+          6-player table, {stakeSol} SOL buy-in each. Seat AI bots to test solo or invite friends to play Liar's Dice.
         </p>
       </div>
 
       <EndingPick value={vote} onChange={onVoteChange} disabled={busy} />
 
       <div className="space-y-3 pt-2">
-        <button
-          type="button"
+        <Button
+          label="Open it  →"
           onClick={onCreateRoom}
           disabled={busy}
-          className="w-full rounded-lg bg-orange-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-600/30 transition hover:bg-orange-500 cursor-pointer disabled:opacity-40"
-        >
-          Open Table
-        </button>
-
-        <button
-          type="button"
+          className="w-full text-base py-3.5"
+        />
+        <Button
+          ghost
+          label="Back to Lobby"
           onClick={onBack}
           disabled={busy}
-          className="w-full rounded-lg border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 hover:border-white/20 transition cursor-pointer"
-        >
-          Back to Home
-        </button>
+          className="w-full"
+        />
       </div>
     </div>
   );

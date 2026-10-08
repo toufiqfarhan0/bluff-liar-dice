@@ -1,5 +1,5 @@
 /**
- * The Herd client: addresses, state decoding, and the room lifecycle.
+ * The Bluff client: addresses, state decoding, and the room lifecycle.
  *
  * Instructions come from the generated IDL rather than hand-written account
  * lists - the delegation, commit and VRF macros inject accounts that appear
@@ -36,7 +36,7 @@ export enum Phase {
 /**
  * What happens when a room comes down to two.
  *
- * Two players carry no signal - "match the herd" needs a herd, and with two
+ * Two players carry no signal - a bluff showdown needs table dynamics, and with two
  * left, same-word and different-word are symmetric under both rules, so no
  * heads-up round can ever cull anybody. The table votes on the tiebreak at the
  * door, before anyone knows who they would be facing.
@@ -114,7 +114,7 @@ export interface RoomState {
   ending: Ending;
   /** Seated by the oracle from the public queue rather than opened by a person. */
   dealt: boolean;
-  /** Whether the last two were separated by the coin rather than by the herd. */
+  /** Whether the last two were separated by the coin rather than by elimination. */
   coinDecided: boolean;
   /** A coin flip is out with the oracle and has not come back. */
   awaitingCoin: boolean;
@@ -133,8 +133,6 @@ export class Bluff {
   constructor(idl: any) {
     this.program = new Program(idl);
   }
-
-export const Herd = Bluff;
 
   get id() {
     return this.program.id;
@@ -484,3 +482,5 @@ function u16(n: number): Uint8Array {
   new DataView(out.buffer).setUint16(0, n, true);
   return out;
 }
+
+

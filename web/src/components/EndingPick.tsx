@@ -12,9 +12,9 @@ export function EndingPick({
   disabled?: boolean;
 }) {
   return (
-    <div className="space-y-2.5">
-      <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-        If down to the final two players
+    <div className="space-y-2">
+      <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362]">
+        IF IT COMES DOWN TO TWO
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -23,28 +23,28 @@ export function EndingPick({
           type="button"
           onClick={() => onChange(Ending.Split)}
           disabled={disabled}
-          className={`panel p-4 text-left transition-all cursor-pointer ${
+          className={`group flex flex-col items-start p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
             value === Ending.Split
-              ? "border-orange-500/50 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
-              : "hover:border-white/20"
+              ? "bg-[#201d10] border-[#FBD53D] shadow-[0_0_15px_-3px_rgba(251, 213, 61,0.25)]"
+              : "bg-[#171b14] border-[#2a3122] hover:border-[#3f4a33] opacity-75 hover:opacity-100"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           <div className="flex items-center gap-2 mb-1">
             <Divide
               className={`w-4 h-4 ${
-                value === Ending.Split ? "text-orange-400" : "text-slate-400"
+                value === Ending.Split ? "text-[#FBD53D]" : "text-[#98a08e]"
               }`}
             />
             <span
-              className={`text-sm font-semibold ${
-                value === Ending.Split ? "text-orange-400" : "text-slate-200"
+              className={`text-sm font-extrabold ${
+                value === Ending.Split ? "text-[#FBD53D]" : "text-[#f1f4ec]"
               }`}
             >
-              Split
+              Split it
             </span>
           </div>
-          <span className="text-xs text-slate-400 leading-snug">
-            Both players split the pot 50/50.
+          <span className="text-xs text-[#98a08e] leading-snug">
+            You both walk away with half the pot.
           </span>
         </button>
 
@@ -53,34 +53,34 @@ export function EndingPick({
           type="button"
           onClick={() => onChange(Ending.Coin)}
           disabled={disabled}
-          className={`panel p-4 text-left transition-all cursor-pointer ${
+          className={`group flex flex-col items-start p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
             value === Ending.Coin
-              ? "border-orange-500/50 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
-              : "hover:border-white/20"
+              ? "bg-[#201d10] border-[#FBD53D] shadow-[0_0_15px_-3px_rgba(251, 213, 61,0.25)]"
+              : "bg-[#171b14] border-[#2a3122] hover:border-[#3f4a33] opacity-75 hover:opacity-100"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           <div className="flex items-center gap-2 mb-1">
             <Coins
               className={`w-4 h-4 ${
-                value === Ending.Coin ? "text-orange-400" : "text-slate-400"
+                value === Ending.Coin ? "text-[#FBD53D]" : "text-[#98a08e]"
               }`}
             />
             <span
-              className={`text-sm font-semibold ${
-                value === Ending.Coin ? "text-orange-400" : "text-slate-200"
+              className={`text-sm font-extrabold ${
+                value === Ending.Coin ? "text-[#FBD53D]" : "text-[#f1f4ec]"
               }`}
             >
               Coin flip
             </span>
           </div>
-          <span className="text-xs text-slate-400 leading-snug">
-            On-chain VRF oracle picks one winner.
+          <span className="text-xs text-[#98a08e] leading-snug">
+            VRF oracle picks one; winner takes all.
           </span>
         </button>
       </div>
 
-      <p className="text-xs text-slate-500 leading-relaxed">
-        Everyone at the table votes and majority rules. Ties default to split.
+      <p className="text-xs text-[#6b7362] leading-relaxed">
+        Everyone at the table votes and majority wins. A tie means you split.
       </p>
     </div>
   );
@@ -92,14 +92,14 @@ export function EndingTally({ room }: { room: RoomState }) {
   const winning = coins > splits ? "Coin flip" : "Split";
 
   return (
-    <div className="panel p-4 space-y-1 text-left">
-      <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-        Table vote status
+    <div className="bg-[#171b14] border border-[#2a3122] rounded-2xl p-4 space-y-1.5">
+      <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362]">
+        THE TABLE'S VOTE SO FAR
       </div>
-      <div className="text-sm text-slate-300">
-        <strong className="text-orange-400 font-semibold">{winning}</strong>
+      <div className="text-sm text-[#98a08e]">
+        <strong className="text-[#f1f4ec] font-bold">{winning}</strong>
         {coins === splits
-          ? ` — table is tied ${coins}–${splits} (defaults to Split).`
+          ? ` — room is tied ${coins}–${splits} (ties default to Split).`
           : ` — ${Math.max(coins, splits)} of ${room.seats.length} players favor this.`}
       </div>
     </div>

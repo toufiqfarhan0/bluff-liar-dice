@@ -14,9 +14,9 @@ export function Pips({ round, total = 12 }: { round: number; total?: number }) {
             key={i}
             className={`h-2 rounded-full transition-all duration-300 ${
               isCurrent
-                ? "w-5 bg-[#c9f24a] shadow-[0_0_8px_rgba(201,242,74,0.6)]"
+                ? "w-5 bg-[#FBD53D] shadow-[0_0_8px_rgba(251, 213, 61,0.6)]"
                 : isPast
-                  ? "w-2 bg-[#c9f24a]/80"
+                  ? "w-2 bg-[#FBD53D]/80"
                   : "w-2 bg-[#2a3122]"
             }`}
           />

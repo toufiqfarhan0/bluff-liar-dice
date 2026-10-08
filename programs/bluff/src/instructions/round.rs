@@ -11,7 +11,7 @@ use ephemeral_rollups_sdk::vrf::instructions::{
 };
 use ephemeral_rollups_sdk::vrf::{self as vrf_api};
 
-use crate::error::HerdError;
+use crate::error::BluffError;
 use crate::state::{Answers, Ending, Outcome, Phase, Room, MAX_ANSWER, MAX_PLAYERS, MAX_ROUNDS};
 use crate::{ANSWERS_SEED, ROOM_SEED};
 
@@ -64,7 +64,7 @@ pub struct SealRoom<'info> {
 pub fn handle_seal(ctx: Context<SealRoom>) -> Result<()> {
     {
         let room = &ctx.accounts.room;
-        require!(room.phase == Phase::Playing, HerdError::NotPlaying);
+        require!(room.phase == Phase::Playing, BluffError::NotPlaying);
     }
 
     let room_key = ctx.accounts.room.key();
@@ -90,7 +90,7 @@ pub fn handle_seal(ctx: Context<SealRoom>) -> Result<()> {
     let room = &mut ctx.accounts.room;
     room.round_ends_at = now + room.round_seconds as i64;
 
-    msg!("herd: answers sealed, round 1 closes at {}", room.round_ends_at);
+    msg!("bluff: answers sealed, round 1 closes at {}", room.round_ends_at);
     Ok(())
 }
 
@@ -119,25 +119,25 @@ pub struct SubmitAnswer<'info> {
 }
 
 pub fn handle_submit(ctx: Context<SubmitAnswer>, answer: Vec<u8>) -> Result<()> {
-    require!(!answer.is_empty(), HerdError::EmptyAnswer);
-    require!(answer.len() <= MAX_ANSWER, HerdError::AnswerTooLong);
+    require!(!answer.is_empty(), BluffError::EmptyAnswer);
+    require!(answer.len() <= MAX_ANSWER, BluffError::AnswerTooLong);
 
     let now = Clock::get()?.unix_timestamp;
     let room = &mut ctx.accounts.room;
 
-    require!(room.phase == Phase::Playing, HerdError::NotPlaying);
-    require!(now <= room.round_ends_at, HerdError::RoundClosed);
-    require!(!room.awaiting_coin, HerdError::RoundClosed);
+    require!(room.phase == Phase::Playing, BluffError::NotPlaying);
+    require!(now <= room.round_ends_at, BluffError::RoundClosed);
+    require!(!room.awaiting_coin, BluffError::RoundClosed);
 
     let index = room
         .seat_of(&ctx.accounts.session.key())
-        .ok_or(HerdError::NotAPlayer)?;
+        .ok_or(BluffError::NotAPlayer)?;
     let round = room.round;
 
-    require!(room.seats[index].alive, HerdError::Eliminated);
+    require!(room.seats[index].alive, BluffError::Eliminated);
     require!(
         !room.seats[index].answered(round),
-        HerdError::AlreadyAnswered
+        BluffError::AlreadyAnswered
     );
 
     // Normalise here rather than trusting the client. Two players who both meant
@@ -155,7 +155,7 @@ pub fn handle_submit(ctx: Context<SubmitAnswer>, answer: Vec<u8>) -> Result<()> 
     while len > 0 && buffer[len - 1] == b' ' {
         len -= 1;
     }
-    require!(len > 0, HerdError::EmptyAnswer);
+    require!(len > 0, BluffError::EmptyAnswer);
 
     // What was said goes into the sealed account; that it was said goes into the
     // public one. Seeing "answer sealed" appear next to a name is the whole
@@ -217,9 +217,9 @@ pub fn handle_close(ctx: Context<CloseRound>, client_seed: u8) -> Result<()> {
 
     {
         let room = &ctx.accounts.room;
-        require!(room.phase == Phase::Playing, HerdError::NotPlaying);
-        require!(now > room.round_ends_at, HerdError::RoundStillOpen);
-        require!(!room.awaiting_coin, HerdError::CoinAlreadyRequested);
+        require!(room.phase == Phase::Playing, BluffError::NotPlaying);
+        require!(now > room.round_ends_at, BluffError::RoundStillOpen);
+        require!(!room.awaiting_coin, BluffError::CoinAlreadyRequested);
     }
 
     let answers = &mut ctx.accounts.answers;
@@ -243,7 +243,7 @@ pub fn handle_close(ctx: Context<CloseRound>, client_seed: u8) -> Result<()> {
     };
 
     msg!(
-        "herd: round {} scored, {} strayed, {} left",
+        "bluff: round {} scored, {} strayed, {} left",
         room.round,
         culled,
         room.alive_count()
@@ -280,12 +280,12 @@ pub fn handle_close(ctx: Context<CloseRound>, client_seed: u8) -> Result<()> {
             // would let whoever asked second keep the answer they preferred.
             let room = &mut ctx.accounts.room;
             room.awaiting_coin = true;
-            msg!("herd: two left, coin requested from the oracle");
+            msg!("bluff: two left, coin requested from the oracle");
             return Ok(());
         }
 
         room.phase = Phase::Finished;
-        msg!("herd: two left and the table voted to split");
+        msg!("bluff: two left and the table voted to split");
         return Ok(());
     }
 
@@ -327,7 +327,7 @@ pub fn handle_callback(ctx: Context<CallbackRound>, randomness: [u8; 32]) -> Res
     // request goes out and cleared here, so a second callback finds nothing to
     // do and the game cannot be re-decided by a late message.
     if !room.awaiting_coin || room.phase != Phase::Playing {
-        msg!("herd: callback ignored, no coin outstanding");
+        msg!("bluff: callback ignored, no coin outstanding");
         return Ok(());
     }
     room.awaiting_coin = false;
@@ -336,7 +336,7 @@ pub fn handle_callback(ctx: Context<CallbackRound>, randomness: [u8; 32]) -> Res
     room.coin_decided = true;
     room.phase = Phase::Finished;
 
-    msg!("herd: the coin fell - one of the last two takes it all");
+    msg!("bluff: the coin fell - one of the last two takes it all");
     Ok(())
 }
 
@@ -424,7 +424,7 @@ pub fn resolve_round(room: &mut Room, answers: &Answers) -> usize {
     // play another.
     let doomed: usize = live_sizes.iter().filter(|&&s| s == target).sum();
     if doomed >= room.alive_count() {
-        msg!("herd: every group the same size - nobody strayed, nobody goes");
+        msg!("bluff: every group the same size - nobody strayed, nobody goes");
         return 0;
     }
 
@@ -470,7 +470,7 @@ pub struct FinishRoom<'info> {
 pub fn handle_finish(ctx: Context<FinishRoom>) -> Result<()> {
     require!(
         ctx.accounts.room.phase == Phase::Finished,
-        HerdError::NotFinished
+        BluffError::NotFinished
     );
 
     MagicIntentBundleBuilder::new(
@@ -484,7 +484,7 @@ pub fn handle_finish(ctx: Context<FinishRoom>) -> Result<()> {
     ])
     .build_and_invoke()?;
 
-    msg!("herd: room committed and handed back to Solana");
+    msg!("bluff: room committed and handed back to Solana");
     Ok(())
 }
 
@@ -671,7 +671,7 @@ mod tests {
     /// A table gets the ending it voted for, and a split table gets Split.
     #[test]
     fn the_table_votes_on_its_own_ending() {
-        use crate::instructions::room::tally_ending;
+        use crate::instructions::table::tally_ending;
 
         assert_eq!(tally_ending(3, 2), Ending::Coin);
         assert_eq!(tally_ending(2, 3), Ending::Split);

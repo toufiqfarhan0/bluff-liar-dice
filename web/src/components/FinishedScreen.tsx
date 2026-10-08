@@ -3,7 +3,7 @@ import type { RoomState } from "../lib/bluff";
 import { Avatar, shortKey } from "./Avatar";
 import { Button } from "./Button";
 import confetti from "canvas-confetti";
-import { Award, CheckCircle2, Crown, Dices, RotateCcw } from "lucide-react";
+import { Award, CheckCircle2, RotateCcw } from "lucide-react";
 
 export function FinishedScreen({
   room,
@@ -28,6 +28,7 @@ export function FinishedScreen({
 }) {
   const survivors = room.seats.filter((seat) => seat.alive);
   const share = survivors.length ? pot / survivors.length : 0;
+  const coin = room.coinDecided;
   const champion = survivors[0];
   const championName = champion
     ? champion.wallet.toBase58() === you
@@ -38,10 +39,10 @@ export function FinishedScreen({
   useEffect(() => {
     if (youWon) {
       confetti({
-        particleCount: 90,
-        spread: 75,
+        particleCount: 80,
+        spread: 70,
         origin: { y: 0.6 },
-        colors: ["#f97316", "#f59e0b", "#fbbf24", "#ffffff"],
+        colors: ["#FBD53D", "#ffffff", "#5fd39a", "#f2a33c"],
       });
     }
   }, [youWon]);
@@ -50,26 +51,22 @@ export function FinishedScreen({
     <div className="flex flex-col max-w-md w-full mx-auto space-y-5 animate-in fade-in duration-300">
       {/* Victory / Defeat Hero Card */}
       <div
-        className={`p-6 rounded-3xl border text-center flex flex-col items-center space-y-3.5 backdrop-blur-md ${
+        className={`p-6 rounded-3xl border text-center flex flex-col items-center space-y-3 ${
           youWon
-            ? "bg-[#24150e]/90 border-orange-500/60 shadow-[0_0_35px_-5px_rgba(249,115,22,0.45)]"
-            : "bg-[#140d09]/80 border-[#331f15]"
+            ? "bg-[#201d10] border-[#FBD53D]/40 shadow-[0_0_30px_-5px_rgba(251, 213, 61,0.3)]"
+            : "bg-[#171b14] border-[#2a3122]"
         }`}
       >
-        <div className="p-3 rounded-2xl bg-[#1f130c] border border-orange-500/30 flex items-center justify-center">
-          {youWon ? (
-            <Crown className="w-10 h-10 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-          ) : (
-            <Dices className="w-10 h-10 text-orange-400/70" />
-          )}
-        </div>
+        <span className="text-5xl select-none">{youWon ? "👑" : "🎲"}</span>
 
         <h2
           className={`text-3xl font-black italic tracking-tight ${
-            youWon ? "text-amber-400" : "text-[#faf5f0]"
+            youWon ? "text-[#FBD53D]" : "text-[#f1f4ec]"
           }`}
         >
-          {youWon ? "BLUFF CHAMPION" : "Eliminated from Table"}
+          {youWon
+            ? "BLUFF CHAMPION"
+            : "Eliminated from Table"}
         </h2>
 
         {champion && (
@@ -81,11 +78,11 @@ export function FinishedScreen({
           />
         )}
 
-        <div className="inline-flex px-4 py-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-orange-950 text-xs font-black uppercase tracking-wider shadow-[0_0_15px_rgba(249,115,22,0.35)]">
+        <div className="inline-flex px-4 py-1.5 rounded-full bg-[#FBD53D] text-[#141004] text-xs font-black uppercase tracking-wider">
           {survivors.length === 1 ? `${championName} Takes Pot` : `${survivors.length} Survivors Split`}
         </div>
 
-        <p className="text-xs text-[#a69488] max-w-xs leading-relaxed">
+        <p className="text-xs text-[#98a08e] max-w-xs leading-relaxed">
           {youWon
             ? `You out-bluffed every opponent at the table! Last player standing with dice.`
             : `${championName} survived with the last remaining dice at the table.`}
@@ -93,16 +90,16 @@ export function FinishedScreen({
       </div>
 
       {/* The Pot & Settlement card */}
-      <div className="p-5 bg-[#140d09]/80 border border-[#331f15] rounded-3xl text-center space-y-2 backdrop-blur-md">
-        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#a69488] block">
+      <div className="p-5 bg-[#171b14] border border-[#2a3122] rounded-3xl text-center space-y-2">
+        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
           {settled ? "SETTLED ON SOLANA" : "THE TOTAL POT"}
         </span>
 
-        <div className="text-4xl font-black text-amber-400 tracking-tight drop-shadow-[0_0_10px_rgba(251,191,36,0.4)]">
+        <div className="text-4xl font-black text-[#FBD53D] tracking-tight">
           ◎ {(pot / 1e9).toFixed(2)}
         </div>
 
-        <p className="text-xs text-[#faf5f0] font-medium">
+        <p className="text-xs text-[#f1f4ec] font-medium">
           {survivors.length === 1
             ? youWon
               ? "All of it is yours."
@@ -110,9 +107,9 @@ export function FinishedScreen({
             : `Split ${survivors.length} ways — ◎ ${(share / 1e9).toFixed(2)} each.`}
         </p>
 
-        <p className="text-[11px] text-[#6e5e54]">
+        <p className="text-[11px] text-[#6b7362]">
           {settled ? (
-            <span className="inline-flex items-center gap-1 text-emerald-400">
+            <span className="inline-flex items-center gap-1 text-[#5fd39a]">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Transferred from Solana vault PDA directly to recipient wallet.</span>
             </span>
@@ -122,10 +119,10 @@ export function FinishedScreen({
         </p>
       </div>
 
-      {/* Last Actions / Words Recap List */}
+      {/* Last Words Recap List */}
       <div className="space-y-2.5">
-        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#a69488] block">
-          TABLE SUMMARY
+        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
+          THE LAST WORD
         </span>
         <div className="space-y-2">
           {room.seats.map((seat, i) => {
@@ -138,19 +135,19 @@ export function FinishedScreen({
             return (
               <div
                 key={key}
-                className={`flex items-center justify-between p-3 rounded-xl bg-[#140d09]/80 border border-[#331f15] ${
+                className={`flex items-center justify-between p-3 rounded-xl bg-[#171b14] border border-[#2a3122] ${
                   !seat.alive ? "opacity-50" : ""
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <Avatar who={key} name={name} size={28} out={!seat.alive} you={isYou} />
-                  <span className={`text-xs font-bold ${isYou ? "text-orange-400" : "text-[#faf5f0]"}`}>
+                  <span className={`text-xs font-bold ${isYou ? "text-[#FBD53D]" : "text-[#f1f4ec]"}`}>
                     {name}
                   </span>
                 </div>
                 <span
                   className={`text-xs font-extrabold capitalize ${
-                    !seat.alive ? "text-red-400 line-through" : "text-[#faf5f0]"
+                    !seat.alive ? "text-[#f2603c] line-through" : "text-[#f1f4ec]"
                   }`}
                 >
                   "{word}"

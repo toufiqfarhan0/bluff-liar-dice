@@ -29,38 +29,38 @@ export function JoiningScreen({
         <button
           onClick={onBack}
           disabled={busy}
-          className="p-2 rounded-full text-[#a69488] hover:text-[#faf5f0] hover:bg-[#1c120c] transition-colors cursor-pointer"
+          className="p-2 rounded-full text-[#6b7362] hover:text-[#f1f4ec] hover:bg-[#1f241a] transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#a69488] block">
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
             JOINING GAME
           </span>
-          <h2 className="text-2xl font-black italic tracking-tight text-[#faf5f0]">
+          <h2 className="text-2xl font-black italic tracking-tight text-[#f1f4ec]">
             This Room
           </h2>
         </div>
       </div>
 
       {/* Room Summary */}
-      <div className="p-4 bg-[#140d09]/80 border border-[#331f15] rounded-2xl space-y-3 backdrop-blur-md">
+      <div className="p-4 bg-[#171b14] border border-[#2a3122] rounded-2xl space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-[#faf5f0] bg-[#1c120c] border border-[#331f15] px-3 py-1 rounded-full">
+          <span className="text-xs font-bold text-[#f1f4ec] bg-[#1f241a] border border-[#2a3122] px-3 py-1 rounded-full">
             {preview.seats.length} seated
           </span>
-          <span className="text-sm font-extrabold text-amber-400">
+          <span className="text-sm font-extrabold text-[#FBD53D]">
             {potSol} SOL pot
           </span>
         </div>
-        <p className="text-xs text-[#a69488]">
+        <p className="text-xs text-[#98a08e]">
           Taking a seat stakes {stakeSol} SOL into the contract vault.
         </p>
       </div>
 
       {/* Players seated */}
       <div className="space-y-2">
-        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#a69488] block">
+        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
           WHO IS IN
         </span>
         <Seats room={preview} />

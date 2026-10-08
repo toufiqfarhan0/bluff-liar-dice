@@ -24,7 +24,7 @@ export function RingTable({
     >
       {/* Decorative table ring glow */}
       <div
-        className="absolute rounded-full border border-[#422514] bg-[#140d09]/70 shadow-[inset_0_0_40px_rgba(0,0,0,0.8),0_0_20px_rgba(249,115,22,0.12)]"
+        className="absolute rounded-full border border-[#2a3122] bg-[#12160f]/60 shadow-[inset_0_0_40px_rgba(0,0,0,0.6)]"
         style={{ width: size - 30, height: size - 30 }}
       />
 
@@ -60,10 +60,10 @@ export function RingTable({
             <span
               className={`text-[10px] font-semibold truncate max-w-[56px] text-center mt-1 ${
                 !seat.alive
-                  ? "text-[#6e5e54] line-through"
+                  ? "text-[#6b7362] line-through"
                   : seat.key === you
-                    ? "text-orange-400 font-bold"
-                    : "text-[#a69488]"
+                    ? "text-[#FBD53D] font-bold"
+                    : "text-[#98a08e]"
               }`}
             >
               {seat.key === you ? "You" : name ?? ""}

@@ -17,7 +17,7 @@ pub const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
 /// Derived from the enum rather than written down. Hand-counted numbers drift
 /// the moment a variant is inserted, and the test then asserts the wrong
 /// failure while still passing for the wrong reason.
-pub fn code(err: bluff::error::HerdError) -> String {
+pub fn code(err: bluff::error::BluffError) -> String {
     format!("Custom({})", 6000 + err as u32)
 }
 

@@ -1,4 +1,4 @@
-/* Herd — mock UI.
+/* Bluff — mock UI.
    Phone-width column, because the real thing is a Seeker app. */
 
 :root {
@@ -252,7 +252,7 @@ body {
 
 .group-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px; }
 .group-answer { font-size: 19px; font-weight: 700; }
-.group.herd .group-answer { color: var(--good); }
+.group.bluff .group-answer { color: var(--good); }
 .group-count { font-size: 12px; color: var(--faint); }
 .group-people { display: flex; gap: 6px; flex-wrap: wrap; }
 

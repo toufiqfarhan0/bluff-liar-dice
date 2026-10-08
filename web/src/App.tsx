@@ -28,9 +28,8 @@ import {
   rollDice,
 } from "./lib/dice";
 import { shortKey } from "./components/Avatar";
-import { Header, NavTab } from "./components/Header";
-import { HomeScreen } from "./components/HomeScreen";
-import { RulesScreen } from "./components/RulesScreen";
+import { Header } from "./components/Header";
+import { LobbyScreen } from "./components/LobbyScreen";
 import { OpeningScreen } from "./components/OpeningScreen";
 import { JoiningScreen } from "./components/JoiningScreen";
 import { WaitingScreen } from "./components/WaitingScreen";
@@ -61,8 +60,7 @@ const HOST_COST = (bots: number) =>
   STAKE + SESSION_FUEL + BOT_FUEL * BigInt(bots) + 25_000_000n;
 
 type Screen =
-  | "home"
-  | "rules"
+  | "lobby"
   | "opening"
   | "joining"
   | "waiting"
@@ -78,9 +76,7 @@ interface RoomRef {
 export default function App() {
   const [wallet, setWallet] = useState<ConnectedWallet | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
-  const [screen, setScreen] = useState<Screen>("home");
-  const [isPracticeMode, setIsPracticeMode] = useState(false);
-  const [practiceRound, setPracticeRound] = useState(1);
+  const [screen, setScreen] = useState<Screen>("lobby");
   const [fairness, setFairness] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [airdropping, setAirdropping] = useState(false);
@@ -361,10 +357,6 @@ export default function App() {
       return;
     }
 
-    if (isPracticeMode) {
-      setPracticeRound((r) => r + 1);
-    }
-
     // Re-roll surviving players
     setDicePlayers((prev) =>
       prev.map((p) => ({
@@ -400,43 +392,7 @@ export default function App() {
     setJoinCode("");
     setError(null);
     setEndpoint({ url: BASE_RPC });
-    setIsPracticeMode(false);
-    setPracticeRound(1);
-    setScreen("home");
-  };
-
-  const onStartPractice = async (botCount: number) => {
-    setIsPracticeMode(true);
-    setPracticeRound(1);
-    const crew = await botsFor(`practice-${Date.now()}`, botCount);
-    setBots(crew);
-
-    const allPlayers: PlayerDiceState[] = [
-      {
-        address: wallet?.address || "you",
-        name: "You",
-        diceCount: INITIAL_DICE_COUNT,
-        hand: rollDice(INITIAL_DICE_COUNT),
-        isAlive: true,
-        isHuman: true,
-      },
-      ...crew.map((bot) => ({
-        address: bot.keypair.publicKey.toBase58(),
-        name: bot.name,
-        diceCount: INITIAL_DICE_COUNT,
-        hand: rollDice(INITIAL_DICE_COUNT),
-        isAlive: true,
-        isHuman: false,
-      })),
-    ];
-
-    setDicePlayers(allPlayers);
-    setCurrentBid(null);
-    setLastActions({});
-    setTurnIndex(0);
-    setTurnTimeLeft(20);
-    setScreen("playing");
-    addToast("info", "Practice match started against bots!");
+    setScreen("lobby");
   };
 
   const run = async (label: string, fn: () => Promise<void>) => {
@@ -719,25 +675,12 @@ export default function App() {
       ),
   ).length;
 
-  const activeTab: NavTab = screen === "rules" ? "rules" : "home";
-
-  const handleTabSelect = (tab: NavTab) => {
-    if (tab === "home") {
-      onAgain();
-      setScreen("home");
-    } else if (tab === "rules") {
-      setScreen("rules");
-    }
-  };
-
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-[#05070d] text-slate-100 relative overflow-x-hidden selection:bg-orange-500/30 selection:text-orange-200">
+    <div className="min-h-screen flex flex-col justify-between bg-[#0c0f0b]">
       {/* Top Header */}
       <Header
         wallet={wallet}
         balance={balance}
-        activeTab={activeTab}
-        onSelectTab={handleTabSelect}
         onOpenWallet={() => setWalletModalOpen(true)}
         onDisconnect={async () => {
           await wallet?.disconnect();
@@ -745,36 +688,34 @@ export default function App() {
           setBalance(null);
           onAgain();
         }}
+        onOpenFairness={() => setFairness(true)}
+        onGoHome={onAgain}
         onAirdrop={handleDevnetAirdrop}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full relative z-10 flex flex-col">
+      <main className="flex-1 flex flex-col items-center justify-start p-4 sm:p-6 pb-12 w-full max-w-xl mx-auto">
         {/* Error notification bar */}
         {error && (
-          <div className="w-full max-w-xl mx-auto my-3 px-4">
-            <div className="p-4 rounded-xl bg-rose-500/15 border border-rose-500/35 flex flex-col gap-1 text-left animate-in slide-in-from-top-2 duration-200">
-              <span className="text-xs font-semibold uppercase tracking-wider text-rose-400">
-                Notice
-              </span>
-              <span className="text-xs text-slate-100 leading-relaxed">{error}</span>
-            </div>
+          <div className="w-full mb-4 p-4 rounded-2xl bg-[#f2603c]/15 border border-[#f2603c]/35 flex flex-col gap-1 text-left animate-in slide-in-from-top-2 duration-200">
+            <span className="text-xs font-black uppercase tracking-wider text-[#f2603c]">
+              Notice
+            </span>
+            <span className="text-xs text-[#f1f4ec] leading-relaxed">{error}</span>
           </div>
         )}
 
         {/* Busy / Progress overlay banner */}
         {busy && (
-          <div className="w-full max-w-xl mx-auto my-3 px-4">
-            <div className="p-3.5 rounded-xl bg-slate-900/90 border border-white/10 flex items-center gap-3 animate-pulse shadow-xl backdrop-blur-md">
-              <Loader2 className="w-4 h-4 animate-spin text-orange-400" />
-              <span className="text-xs font-semibold text-slate-100">{busy}…</span>
-            </div>
+          <div className="w-full mb-4 p-3.5 rounded-2xl bg-[#171b14] border border-[#2a3122] flex items-center gap-3 animate-pulse">
+            <Loader2 className="w-4 h-4 animate-spin text-[#FBD53D]" />
+            <span className="text-xs font-semibold text-[#f1f4ec]">{busy}…</span>
           </div>
         )}
 
-        {/* Home Screen (Hero matching FHE Liar's Dice with integrated table actions) */}
-        {screen === "home" && (
-          <HomeScreen
+        {/* View Switcher */}
+        {screen === "lobby" && (
+          <LobbyScreen
             stake={STAKE}
             botSeats={BOT_SEATS}
             joinCode={joinCode}
@@ -788,71 +729,54 @@ export default function App() {
               setVote(Ending.Split);
               setScreen("opening");
             }}
-            onGoRules={() => setScreen("rules")}
+            onOpenFairness={() => setFairness(true)}
             busy={!!busy}
           />
         )}
 
-        {/* Rules & Privacy Screen */}
-        {screen === "rules" && (
-          <RulesScreen
-            onGoLobby={() => setScreen("home")}
+        {screen === "opening" && (
+          <OpeningScreen
+            vote={vote}
+            onVoteChange={setVote}
+            onCreateRoom={onCreate}
+            onBack={() => setScreen("lobby")}
+            busy={!!busy}
+            stake={STAKE}
           />
         )}
 
-        {/* Room Setup Screens */}
-        {screen === "opening" && (
-          <div className="max-w-md w-full mx-auto py-8 px-4">
-            <OpeningScreen
-              vote={vote}
-              onVoteChange={setVote}
-              onCreateRoom={onCreate}
-              onBack={() => setScreen("home")}
-              busy={!!busy}
-              stake={STAKE}
-            />
-          </div>
-        )}
-
         {screen === "joining" && preview && (
-          <div className="max-w-md w-full mx-auto py-8 px-4">
-            <JoiningScreen
-              preview={preview}
-              vote={vote}
-              onVoteChange={setVote}
-              onJoinRoom={onJoin}
-              onBack={() => setScreen("home")}
-              busy={!!busy}
-            />
-          </div>
+          <JoiningScreen
+            preview={preview}
+            vote={vote}
+            onVoteChange={setVote}
+            onJoinRoom={onJoin}
+            onBack={() => setScreen("lobby")}
+            busy={!!busy}
+          />
         )}
 
         {screen === "waiting" && room && ref && (
-          <div className="max-w-md w-full mx-auto py-8 px-4">
-            <WaitingScreen
-              room={room}
-              code={`${ref.host.toBase58()}:${ref.roomId}`}
-              pot={pot}
-              isHost={wallet?.address === ref.host.toBase58()}
-              busy={!!busy}
-              unseatedBots={unseatedBots}
-              onAddBots={() => onAddBots(BOT_SEATS)}
-              onStart={onStart}
-              onLeave={onLeave}
-              nameOf={nameOf}
-              you={wallet?.address}
-              onCopyNotice={() => addToast("success", "Room code copied to clipboard!")}
-            />
-          </div>
+          <WaitingScreen
+            room={room}
+            code={`${ref.host.toBase58()}:${ref.roomId}`}
+            pot={pot}
+            isHost={wallet?.address === ref.host.toBase58()}
+            busy={!!busy}
+            unseatedBots={unseatedBots}
+            onAddBots={() => onAddBots(BOT_SEATS)}
+            onStart={onStart}
+            onLeave={onLeave}
+            nameOf={nameOf}
+            you={wallet?.address}
+            onCopyNotice={() => addToast("success", "Room code copied to clipboard!")}
+          />
         )}
 
-        {/* Active Game Table (Both On-Chain and Practice!) */}
-        {screen === "playing" && (
+        {screen === "playing" && room && (
           <PlayingScreen
             room={room}
             pot={pot}
-            isPractice={isPracticeMode}
-            roundNumber={isPracticeMode ? practiceRound : (room?.round ?? 1)}
             myHand={dicePlayers.find((p) => p.isHuman)?.hand || []}
             currentBid={currentBid}
             turnTimeLeft={turnTimeLeft}
@@ -887,7 +811,6 @@ export default function App() {
           />
         )}
 
-        {/* Showdown Reveal */}
         {screen === "reveal" && showdown && (
           <ShowdownScreen
             showdown={showdown}
@@ -897,21 +820,18 @@ export default function App() {
           />
         )}
 
-        {/* Game Finished */}
-        {screen === "finished" && (
-          <div className="max-w-md w-full mx-auto py-8 px-4">
-            <FinishedScreen
-              room={room || ({ id: 1n, round: 1, host: PublicKey.default, lastRound: 1, phase: Phase.Finished, seats: [], lastWords: [] } as any)}
-              pot={pot}
-              you={wallet?.address}
-              nameOf={nameOf}
-              youWon={dicePlayers.find((p) => p.isHuman)?.isAlive ?? false}
-              settled={room?.phase === Phase.Settled}
-              busy={!!busy}
-              onSettle={onSettle}
-              onAgain={onAgain}
-            />
-          </div>
+        {screen === "finished" && room && (
+          <FinishedScreen
+            room={room}
+            pot={pot}
+            you={wallet?.address}
+            nameOf={nameOf}
+            youWon={!!mySeat?.alive}
+            settled={room.phase === Phase.Settled}
+            busy={!!busy}
+            onSettle={onSettle}
+            onAgain={onAgain}
+          />
         )}
       </main>
 

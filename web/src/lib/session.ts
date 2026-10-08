@@ -7,7 +7,7 @@
 import { Keypair } from "@solana/web3.js";
 import { secureStore } from "./storage";
 
-const key = (room: string) => `herd.session.${room}`;
+const key = (room: string) => `bluff.session.${room}`;
 
 export async function sessionFor(room: string): Promise<Keypair> {
   const saved = await secureStore.get(key(room));

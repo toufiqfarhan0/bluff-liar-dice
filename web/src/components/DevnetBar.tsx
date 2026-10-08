@@ -14,7 +14,7 @@ export function DevnetBar({
     <div className="w-full bg-[#12160f] border-t border-[#2a3122]/60 py-2 px-4 text-[11px] text-[#6b7362] flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#c9f24a] animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#FBD53D] animate-pulse" />
           <span className="font-semibold text-[#98a08e]">MagicBlock Devnet TEE</span>
         </span>
 
@@ -30,7 +30,7 @@ export function DevnetBar({
           type="button"
           onClick={onAirdrop}
           disabled={airdropping}
-          className="flex items-center gap-1 text-[#c9f24a] hover:underline cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-1 text-[#FBD53D] hover:underline cursor-pointer disabled:opacity-50"
         >
           <Flame className="w-3 h-3" />
           <span>{airdropping ? "Airdropping 1 SOL…" : "Free Devnet Faucet"}</span>

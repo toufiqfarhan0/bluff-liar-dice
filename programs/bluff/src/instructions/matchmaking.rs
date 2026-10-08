@@ -19,8 +19,8 @@ use ephemeral_rollups_sdk::vrf::instructions::{
     create_request_scoped_randomness_ix, RequestRandomnessParams,
 };
 
-use crate::error::HerdError;
-use crate::instructions::room::tally_ending;
+use crate::error::BluffError;
+use crate::instructions::table::tally_ending;
 use crate::state::{
     Answers, Ending, Outcome, Phase, Queue, Room, Seat, Vault, Waiting, MAX_ANSWER, MAX_PLAYERS,
     PUBLIC_ROOM_SIZE, QUEUE_CAP,
@@ -76,7 +76,7 @@ pub fn handle_open_queue(
     vault.room = ctx.accounts.queue.key();
     vault.bump = ctx.bumps.vault;
 
-    msg!("herd: queue open at {} a seat", stake);
+    msg!("bluff: queue open at {} a seat", stake);
     Ok(())
 }
 
@@ -183,7 +183,7 @@ pub fn handle_open_public_room(ctx: Context<OpenPublicRoom>, index: u64) -> Resu
         EPHEMERAL_RENT_BUFFER,
     )?;
 
-    msg!("herd: public room {} built", index);
+    msg!("bluff: public room {} built", index);
     Ok(())
 }
 
@@ -220,13 +220,13 @@ pub fn handle_enter_queue(
 
     {
         let queue = &ctx.accounts.queue;
-        require!((queue.count as usize) < QUEUE_CAP, HerdError::QueueFull);
+        require!((queue.count as usize) < QUEUE_CAP, BluffError::QueueFull);
         require!(
             !queue
                 .waiting()
                 .iter()
                 .any(|w| w.wallet == ctx.accounts.player.key()),
-            HerdError::AlreadyWaiting
+            BluffError::AlreadyWaiting
         );
     }
 
@@ -251,7 +251,7 @@ pub fn handle_enter_queue(
     };
     queue.count += 1;
 
-    msg!("herd: {} waiting", queue.count);
+    msg!("bluff: {} waiting", queue.count);
     Ok(())
 }
 
@@ -285,7 +285,7 @@ pub struct LeaveQueue<'info> {
 pub fn handle_leave_queue(ctx: Context<LeaveQueue>) -> Result<()> {
     require!(
         !ctx.accounts.queue.awaiting_deal,
-        HerdError::DealInFlight
+        BluffError::DealInFlight
     );
 
     let who = ctx.accounts.player.key();
@@ -294,7 +294,7 @@ pub fn handle_leave_queue(ctx: Context<LeaveQueue>) -> Result<()> {
         .waiting()
         .iter()
         .position(|w| w.wallet == who)
-        .ok_or(error!(HerdError::NotWaiting))?;
+        .ok_or(error!(BluffError::NotWaiting))?;
 
     let count = queue.count as usize;
     for i in at..count - 1 {
@@ -308,14 +308,14 @@ pub fn handle_leave_queue(ctx: Context<LeaveQueue>) -> Result<()> {
     **vault.try_borrow_mut_lamports()? = vault
         .lamports()
         .checked_sub(stake)
-        .ok_or(HerdError::Overflow)?;
+        .ok_or(BluffError::Overflow)?;
     let player = ctx.accounts.player.to_account_info();
     **player.try_borrow_mut_lamports()? = player
         .lamports()
         .checked_add(stake)
-        .ok_or(HerdError::Overflow)?;
+        .ok_or(BluffError::Overflow)?;
 
-    msg!("herd: left the queue, {} refunded", stake);
+    msg!("bluff: left the queue, {} refunded", stake);
     Ok(())
 }
 
@@ -376,17 +376,17 @@ pub fn handle_deal(ctx: Context<Deal>, client_seed: u8) -> Result<()> {
     {
         let queue = &ctx.accounts.queue;
         let room = &ctx.accounts.room;
-        require!(!queue.awaiting_deal, HerdError::DealInFlight);
+        require!(!queue.awaiting_deal, BluffError::DealInFlight);
         require!(
             (queue.count as usize) >= PUBLIC_ROOM_SIZE,
-            HerdError::NotEnoughWaiting
+            BluffError::NotEnoughWaiting
         );
-        require!(room.dealt, HerdError::NotAPublicRoom);
+        require!(room.dealt, BluffError::NotAPublicRoom);
         // A room mid-game cannot take a new table. Settled and Open are both
         // free - one has paid out, the other has never been used.
         require!(
             room.phase == Phase::Open || room.phase == Phase::Settled,
-            HerdError::RoomNotOpen
+            BluffError::RoomNotOpen
         );
     }
 
@@ -429,7 +429,7 @@ pub fn handle_deal(ctx: Context<Deal>, client_seed: u8) -> Result<()> {
     queue.awaiting_deal = true;
     queue.dealing_into = room_id;
 
-    msg!("herd: deal requested for room {}", room_id);
+    msg!("bluff: deal requested for room {}", room_id);
     Ok(())
 }
 
@@ -493,11 +493,11 @@ pub fn handle_callback_deal(
 
     // A duplicate delivery must not deal twice.
     if !queue.awaiting_deal {
-        msg!("herd: deal callback ignored, nothing outstanding");
+        msg!("bluff: deal callback ignored, nothing outstanding");
         return Ok(());
     }
     if queue.dealing_into != ctx.accounts.room.room_id {
-        msg!("herd: deal callback ignored, wrong room");
+        msg!("bluff: deal callback ignored, wrong room");
         return Ok(());
     }
     queue.awaiting_deal = false;
@@ -505,7 +505,7 @@ pub fn handle_callback_deal(
     let count = queue.count as usize;
     if count < PUBLIC_ROOM_SIZE {
         // Somebody left between the request and the answer.
-        msg!("herd: the line emptied before the deal landed");
+        msg!("bluff: the line emptied before the deal landed");
         return Ok(());
     }
 
@@ -555,20 +555,20 @@ pub fn handle_callback_deal(
     // which is the only account that ever pays a winner.
     let moving = stake
         .checked_mul(PUBLIC_ROOM_SIZE as u64)
-        .ok_or(HerdError::Overflow)?;
+        .ok_or(BluffError::Overflow)?;
     let queue_vault = ctx.accounts.queue_vault.to_account_info();
     **queue_vault.try_borrow_mut_lamports()? = queue_vault
         .lamports()
         .checked_sub(moving)
-        .ok_or(HerdError::Overflow)?;
+        .ok_or(BluffError::Overflow)?;
     let room_vault = ctx.accounts.room_vault.to_account_info();
     **room_vault.try_borrow_mut_lamports()? = room_vault
         .lamports()
         .checked_add(moving)
-        .ok_or(HerdError::Overflow)?;
+        .ok_or(BluffError::Overflow)?;
 
     msg!(
-        "herd: room {} dealt six players, {} still waiting",
+        "bluff: room {} dealt six players, {} still waiting",
         room.room_id,
         queue.count
     );

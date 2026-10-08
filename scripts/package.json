@@ -1,5 +1,5 @@
 {
-  "name": "herd-scripts",
+  "name": "bluff-scripts",
   "private": true,
   "type": "module",
   "dependencies": {

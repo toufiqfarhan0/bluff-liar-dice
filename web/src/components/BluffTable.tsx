@@ -1,7 +1,7 @@
 import React from "react";
-import { Bid, dieSymbol, faceNamePlural } from "../lib/dice";
-import { Avatar } from "./Avatar";
-import { Clock, Dices, Shield, Zap } from "lucide-react";
+import { Bid, DieFace, dieSymbol, faceNamePlural } from "../lib/dice";
+import { Avatar, shortKey } from "./Avatar";
+import { Clock, Dices, Flame, Sparkles } from "lucide-react";
 
 export interface SeatInfo {
   address: string;
@@ -18,142 +18,138 @@ export function BluffTable({
   currentBid,
   turnTimeLeft,
   totalDiceOnTable,
+  size = 320,
 }: {
   seats: SeatInfo[];
   currentBid: Bid | null;
   turnTimeLeft: number;
   totalDiceOnTable: number;
+  size?: number;
 }) {
+  const radius = size / 2 - 40;
+
   return (
-    <div className="w-full space-y-4 select-none">
-      {/* 1. Opponents Roster Strip (UltraPong / Hecliar style) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        {seats.map((seat) => {
-          return (
-            <div
-              key={seat.address}
-              className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
-                !seat.isAlive
-                  ? "bg-[#0b0805]/60 border-[#1f130b] opacity-40"
-                  : seat.isCurrentTurn
-                  ? "bg-[#1f140c] border-orange-500 shadow-[0_0_18px_rgba(249,115,22,0.35)] ring-1 ring-orange-500/80"
-                  : "bg-[#110c07]/80 border-[#2b1a10] hover:border-orange-500/30"
-              }`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative">
-                  <Avatar
-                    who={seat.address}
-                    name={seat.name}
-                    size={32}
-                    out={!seat.isAlive}
-                    you={seat.isYou}
-                  />
-                  {seat.isCurrentTurn && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping" />
-                  )}
-                </div>
+    <div
+      className="relative mx-auto flex items-center justify-center select-none my-2"
+      style={{ width: size, height: size }}
+    >
+      {/* Felt Table Surface */}
+      <div
+        className="absolute rounded-full border border-[#2d3822] bg-gradient-to-b from-[#141b10] to-[#0c100a] shadow-[inset_0_0_60px_rgba(0,0,0,0.8),0_10px_30px_rgba(0,0,0,0.6)]"
+        style={{ width: size - 30, height: size - 30 }}
+      />
 
-                <div className="min-w-0">
-                  <span
-                    className={`text-xs font-bold truncate block ${
-                      seat.isYou
-                        ? "text-orange-400 font-black"
-                        : !seat.isAlive
-                        ? "text-[#635349] line-through"
-                        : "text-[#faf5f0]"
-                    }`}
-                  >
-                    {seat.isYou ? "You" : seat.name}
-                  </span>
-                  <div className="text-[10px] font-mono text-[#9c897d] flex items-center gap-1">
-                    {seat.isAlive ? (
-                      <>
-                        <span className="text-amber-400 font-bold">{seat.diceCount}</span>
-                        <span>{seat.diceCount === 1 ? "die" : "dice"}</span>
-                      </>
-                    ) : (
-                      <span className="text-red-400">Eliminated</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Status / Last action tag */}
-              <div className="text-right shrink-0">
-                {seat.lastAction && seat.isAlive ? (
-                  <span className="text-[9px] font-mono bg-[#1c120c] border border-orange-500/30 text-amber-300 px-2 py-0.5 rounded-md block truncate max-w-[85px]">
-                    {seat.lastAction}
-                  </span>
-                ) : seat.isCurrentTurn ? (
-                  <span className="text-[9px] font-mono text-orange-400 font-bold animate-pulse">
-                    ACTING…
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 2. Center Stage: The Live High Claim Deck */}
-      <div className="tactical-panel p-5 relative overflow-hidden text-center border-orange-500/20 shadow-2xl">
-        {/* Subtle orange ambient glow */}
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col items-center justify-center space-y-2">
-          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-[#9c897d]">
-            <Zap className="w-3.5 h-3.5 text-orange-400" />
-            <span>TABLE HIGH CLAIM</span>
-          </div>
-
-          {currentBid ? (
-            <div className="space-y-1 py-1">
-              <div className="flex items-center justify-center gap-3">
-                <span className="text-5xl font-black font-mono text-orange-400 tabular-nums drop-shadow-[0_0_20px_rgba(249,115,22,0.5)]">
-                  {currentBid.quantity}
-                </span>
-                <span className="text-4xl text-amber-300">
-                  ×
-                </span>
-                <span className="text-5xl text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.6)]">
-                  {dieSymbol(currentBid.face)}
-                </span>
-              </div>
-
-              <div className="text-sm font-bold text-[#faf5f0] tracking-wide">
-                {currentBid.quantity} {faceNamePlural(currentBid.face)}
-              </div>
-
-              <div className="text-xs font-mono text-[#9c897d]">
-                Locked by <strong className="text-orange-400">{currentBid.bidderName}</strong>
-              </div>
-            </div>
-          ) : (
-            <div className="py-4 space-y-2">
-              <Dices className="w-9 h-9 text-orange-400/70 mx-auto animate-pulse" />
-              <div className="text-sm font-bold tracking-wider text-[#faf5f0] uppercase">
-                TABLE IS OPEN
-              </div>
-              <div className="text-xs text-[#9c897d]">
-                Waiting for first player to place opening claim
-              </div>
-            </div>
-          )}
-
-          {/* Turn timer and total table pool */}
-          <div className="flex items-center justify-center gap-4 pt-3 border-t border-[#2b1a10] w-full max-w-xs text-xs font-mono text-[#9c897d]">
-            <span className="flex items-center gap-1.5 text-amber-300">
-              <Clock className="w-3.5 h-3.5 text-orange-400" />
-              <span>{turnTimeLeft}s TURN TIMER</span>
+      {/* Center Table Info (The Current High Bid) */}
+      <div className="absolute z-10 flex flex-col items-center justify-center text-center p-3 max-w-[170px]">
+        {currentBid ? (
+          <div className="space-y-1 animate-in zoom-in-95 duration-200">
+            <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
+              CURRENT BID
             </span>
-            <span>|</span>
-            <span className="text-[#faf5f0] font-semibold">
-              {totalDiceOnTable} TOTAL DICE
+
+            <div className="flex items-center justify-center gap-1.5 py-1">
+              <span className="text-3xl font-black text-[#f1f4ec] font-mono tabular-nums">
+                {currentBid.quantity}
+              </span>
+              <span className="text-3xl font-black text-[#FBD53D] drop-shadow-[0_0_12px_rgba(251, 213, 61,0.4)]">
+                {dieSymbol(currentBid.face)}
+              </span>
+            </div>
+
+            <span className="text-[11px] font-bold text-[#FBD53D] block truncate">
+              {currentBid.quantity} {faceNamePlural(currentBid.face)}
+            </span>
+
+            <span className="text-[10px] text-[#98a08e] block truncate">
+              by <strong className="text-[#f1f4ec]">{currentBid.bidderName}</strong>
             </span>
           </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Dices className="w-8 h-8 text-[#6b7362] mx-auto animate-pulse" />
+            <span className="text-xs font-black uppercase tracking-wider text-[#98a08e] block">
+              WAITING FOR BID
+            </span>
+            <span className="text-[10px] text-[#6b7362] block">
+              First player opens
+            </span>
+          </div>
+        )}
+
+        {/* Turn clock and total table dice */}
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#232a1b] text-[10px] text-[#6b7362]">
+          <span className="flex items-center gap-1 font-mono text-[#98a08e]">
+            <Clock className="w-3 h-3 text-[#FBD53D]" />
+            {turnTimeLeft}s
+          </span>
+          <span>·</span>
+          <span>{totalDiceOnTable} dice</span>
         </div>
       </div>
+
+      {/* Seated Players around the Felt */}
+      {seats.map((seat, i) => {
+        const angle = (i / Math.max(1, seats.length)) * Math.PI * 2 - Math.PI / 2;
+        const x = size / 2 + Math.cos(angle) * radius - 26;
+        const y = size / 2 + Math.sin(angle) * radius - 26;
+
+        return (
+          <div
+            key={seat.address}
+            className="absolute z-20 flex flex-col items-center transition-all duration-300"
+            style={{ left: `${x}px`, top: `${y}px`, width: "52px" }}
+          >
+            {/* Avatar & Turn Glow */}
+            <div className="relative">
+              <div
+                className={`rounded-full transition-all duration-300 ${
+                  seat.isCurrentTurn
+                    ? "ring-2 ring-[#FBD53D] shadow-[0_0_15px_#FBD53D]"
+                    : ""
+                }`}
+              >
+                <Avatar
+                  who={seat.address}
+                  name={seat.name}
+                  size={46}
+                  out={!seat.isAlive}
+                  you={seat.isYou}
+                />
+              </div>
+
+              {/* Dice Count Badge */}
+              {seat.isAlive && (
+                <div
+                  title={`${seat.diceCount} dice remaining`}
+                  className="absolute -bottom-1 -right-1 bg-[#12160e] border border-[#FBD53D]/50 text-[#FBD53D] rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-md"
+                >
+                  {seat.diceCount}
+                </div>
+              )}
+            </div>
+
+            {/* Name */}
+            <span
+              className={`text-[10px] font-bold truncate max-w-[58px] text-center mt-1.5 ${
+                !seat.isAlive
+                  ? "text-[#6b7362] line-through"
+                  : seat.isYou
+                  ? "text-[#FBD53D]"
+                  : "text-[#f1f4ec]"
+              }`}
+            >
+              {seat.isYou ? "You" : seat.name}
+            </span>
+
+            {/* Last Action Bubble */}
+            {seat.lastAction && seat.isAlive && (
+              <span className="text-[9px] bg-[#1b2214] border border-[#2f3a22] text-[#FBD53D] font-semibold px-1.5 py-0.2 rounded-full whitespace-nowrap mt-0.5">
+                {seat.lastAction}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

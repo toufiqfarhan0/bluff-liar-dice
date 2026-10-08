@@ -2,7 +2,7 @@
 
 use anchor_lang::prelude::*;
 
-use crate::error::HerdError;
+use crate::error::BluffError;
 use crate::state::{Phase, Room, Vault};
 use crate::{ROOM_SEED, VAULT_SEED};
 
@@ -45,8 +45,8 @@ pub fn handle_settle(ctx: Context<Settle>) -> Result<()> {
     // Order matters for the message: a settled room is finished too, so
     // checking Finished first would report "the game is not over" about a game
     // that is over and paid.
-    require!(room.phase != Phase::Settled, HerdError::AlreadySettled);
-    require!(room.phase == Phase::Finished, HerdError::NotFinished);
+    require!(room.phase != Phase::Settled, BluffError::AlreadySettled);
+    require!(room.phase == Phase::Finished, BluffError::NotFinished);
 
     let survivors: Vec<Pubkey> = room
         .seats()
@@ -64,10 +64,10 @@ pub fn handle_settle(ctx: Context<Settle>) -> Result<()> {
 
     require!(
         ctx.remaining_accounts.len() == payees.len(),
-        HerdError::WrongWinners
+        BluffError::WrongWinners
     );
     for (account, expected) in ctx.remaining_accounts.iter().zip(payees.iter()) {
-        require_keys_eq!(*account.key, *expected, HerdError::WrongWinners);
+        require_keys_eq!(*account.key, *expected, BluffError::WrongWinners);
     }
 
     let vault_info = ctx.accounts.vault.to_account_info();
@@ -76,23 +76,23 @@ pub fn handle_settle(ctx: Context<Settle>) -> Result<()> {
 
     let each = payable
         .checked_div(payees.len() as u64)
-        .ok_or(HerdError::Overflow)?;
-    require!(each > 0, HerdError::Overflow);
+        .ok_or(BluffError::Overflow)?;
+    require!(each > 0, BluffError::Overflow);
 
     for account in ctx.remaining_accounts.iter() {
         **vault_info.try_borrow_mut_lamports()? = vault_info
             .lamports()
             .checked_sub(each)
-            .ok_or(HerdError::Overflow)?;
+            .ok_or(BluffError::Overflow)?;
         **account.try_borrow_mut_lamports()? = account
             .lamports()
             .checked_add(each)
-            .ok_or(HerdError::Overflow)?;
+            .ok_or(BluffError::Overflow)?;
     }
 
     let room = &mut ctx.accounts.room;
     room.phase = Phase::Settled;
 
-    msg!("herd: paid {} lamports to each of {}", each, payees.len());
+    msg!("bluff: paid {} lamports to each of {}", each, payees.len());
     Ok(())
 }

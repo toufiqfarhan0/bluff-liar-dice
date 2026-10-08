@@ -11,22 +11,22 @@
  * This is that walk.
  */
 import { BASE_RPC, accountData, confirm, lamportsOf, loadKeypair, send, sleep } from "./lib/chain";
-import { Herd, Phase } from "./lib/bluff";
+import { Bluff, Phase } from "./lib/bluff";
 import idl from "./idl.json";
 
-const herd = new Herd(idl);
+const bluff = new Bluff(idl);
 const payer = loadKeypair(`${process.env.HOME}/.config/solana/id.json`);
 const STAKE = 10_000_000n;
-const queue = herd.queue(STAKE);
+const queue = bluff.queue(STAKE);
 
 const ONLY = process.env.ROOM ? BigInt(process.env.ROOM) : null;
 
 for (let index = 0n; index < 10n; index++) {
   if (ONLY !== null && index !== ONLY) continue;
-  const room = herd.publicRoom(STAKE, index);
+  const room = bluff.publicRoom(STAKE, index);
   const data = await accountData(BASE_RPC, room);
   if (!data) continue;
-  let state = herd.decodeRoom(data);
+  let state = bluff.decodeRoom(data);
   if (state.phase !== Phase.Playing) {
     console.log(`room ${index}: ${Phase[state.phase]}, nothing to do`);
     continue;
@@ -45,20 +45,20 @@ for (let index = 0n; index < 10n; index++) {
     if (waitFor > 0) await sleep(waitFor * 1000);
     await confirm(
       BASE_RPC,
-      await send(BASE_RPC, [payer], [herd.closeRound(queue, index, payer.publicKey, state.round)]),
+      await send(BASE_RPC, [payer], [bluff.closeRound(queue, index, payer.publicKey, state.round)]),
     );
-    state = herd.decodeRoom((await accountData(BASE_RPC, room))!);
+    state = bluff.decodeRoom((await accountData(BASE_RPC, room))!);
     process.stdout.write(".");
   }
   console.log(` ${Phase[state.phase]}`);
 
   const winners = state.seats.filter((x) => x.alive).map((x) => x.wallet);
-  const vaultBefore = await lamportsOf(BASE_RPC, herd.vault(room));
+  const vaultBefore = await lamportsOf(BASE_RPC, bluff.vault(room));
   await confirm(
     BASE_RPC,
-    await send(BASE_RPC, [payer], [herd.settle(queue, index, payer.publicKey, winners)]),
+    await send(BASE_RPC, [payer], [bluff.settle(queue, index, payer.publicKey, winners)]),
   );
   console.log(
-    `  refunded ${winners.length} players; vault ${vaultBefore} -> ${await lamportsOf(BASE_RPC, herd.vault(room))}`,
+    `  refunded ${winners.length} players; vault ${vaultBefore} -> ${await lamportsOf(BASE_RPC, bluff.vault(room))}`,
   );
 }

@@ -1,9 +1,9 @@
-pub mod play;
-pub mod queue;
-pub mod room;
-pub mod settle;
+pub mod matchmaking;
+pub mod payout;
+pub mod round;
+pub mod table;
 
-pub use play::*;
-pub use queue::*;
-pub use room::*;
-pub use settle::*;
+pub use matchmaking::*;
+pub use payout::*;
+pub use round::*;
+pub use table::*;

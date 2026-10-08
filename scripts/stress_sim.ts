@@ -8,7 +8,7 @@
  *   1c  does VRF work from inside a rollup, request and callback?
  *
  * Nothing else in the project starts until this reports. Run:
- *   bun run spike.ts
+ *   bun run stress_sim.ts
  */
 
 import { Keypair, PublicKey } from "@solana/web3.js";
@@ -27,7 +27,7 @@ import {
 } from "./lib/chain";
 import { Program, optionPubkey, u8 } from "./lib/program";
 
-const idl = await Bun.file(new URL("../target/idl/herd.json", import.meta.url).pathname).json();
+const idl = await Bun.file(new URL("../target/idl/bluff.json", import.meta.url).pathname).json();
 const program = new Program(idl);
 
 const owner = loadKeypair(`${process.env.HOME}/.config/solana/id.json`);
