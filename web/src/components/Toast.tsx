@@ -17,11 +17,11 @@ export function ToastContainer({
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-12 right-4 sm:right-6 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div className="fixed bottom-6 right-4 sm:right-6 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`pointer-events-auto p-3.5 rounded-2xl border shadow-xl flex items-start gap-2.5 animate-in slide-in-from-bottom-3 duration-200 ${
+          className={`pointer-events-auto p-3.5 rounded-2xl border shadow-2xl backdrop-blur-md flex items-start gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200 ${
             t.type === "success"
               ? "bg-[#1d1a0e] border-[#FBD53D]/40 text-[#f1f4ec]"
               : t.type === "error"

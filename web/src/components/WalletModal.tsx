@@ -101,7 +101,7 @@ export function WalletModal({
 
         <div className="flex items-center gap-2.5 mb-1.5">
           <Wallet className="w-6 h-6 text-[#FBD53D]" />
-          <h2 className="text-2xl font-black italic tracking-tight text-[#f1f4ec]">
+          <h2 className="text-2xl font-black tracking-wide text-[#f1f4ec]">
             Choose Wallet
           </h2>
         </div>

@@ -1,51 +1,82 @@
-import React, { useEffect } from "react";
+import React from "react";
 import type { RoomState } from "../lib/bluff";
 import { Avatar, shortKey } from "./Avatar";
 import { Button } from "./Button";
-import confetti from "canvas-confetti";
-import { Award, CheckCircle2, RotateCcw } from "lucide-react";
+import { Award, CheckCircle2, RotateCcw, Trophy, Skull } from "lucide-react";
+
+export interface FinishedPlayer {
+  address: string;
+  name: string;
+  diceCount: number;
+  isAlive: boolean;
+  isHuman: boolean;
+}
 
 export function FinishedScreen({
   room,
+  dicePlayers,
   pot,
   you,
   nameOf,
-  youWon,
+  youWon: youWonProp,
   settled,
   busy,
   onSettle,
   onAgain,
 }: {
   room: RoomState;
+  dicePlayers?: FinishedPlayer[];
   pot: number;
   you?: string;
   nameOf?: (key: string) => string;
-  youWon: boolean;
+  youWon?: boolean;
   settled: boolean;
   busy: boolean;
   onSettle: () => void;
   onAgain: () => void;
 }) {
-  const survivors = room.seats.filter((seat) => seat.alive);
-  const share = survivors.length ? pot / survivors.length : 0;
-  const coin = room.coinDecided;
+  // Derive survivors accurately from real Liar's Dice player states
+  const hasDicePlayers = dicePlayers && dicePlayers.length > 0;
+  const aliveFromDice = hasDicePlayers
+    ? dicePlayers.filter((p) => p.isAlive && p.diceCount > 0)
+    : [];
+
+  const survivors = aliveFromDice.length > 0
+    ? aliveFromDice
+    : room.seats.filter((seat) => seat.alive).map((seat) => ({
+        address: seat.wallet.toBase58(),
+        name: seat.wallet.toBase58() === you ? "You" : nameOf?.(seat.wallet.toBase58()) ?? shortKey(seat.wallet.toBase58()),
+        diceCount: 1,
+        isAlive: true,
+        isHuman: seat.wallet.toBase58() === you,
+      }));
+
+  const isSoloWinner = survivors.length === 1;
   const champion = survivors[0];
+  const isYou = champion ? (champion.address === you || (hasDicePlayers && champion.isHuman)) : false;
+  const youWon = youWonProp !== undefined ? youWonProp : isYou;
+
   const championName = champion
-    ? champion.wallet.toBase58() === you
+    ? isYou
       ? "You"
-      : nameOf?.(champion.wallet.toBase58()) ?? shortKey(champion.wallet.toBase58())
+      : champion.name || (nameOf?.(champion.address) ?? shortKey(champion.address))
     : "Nobody";
 
-  useEffect(() => {
-    if (youWon) {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ["#FBD53D", "#ffffff", "#5fd39a", "#f2a33c"],
+  const share = isSoloWinner ? pot : (survivors.length ? pot / survivors.length : pot);
+
+  const standingsList = hasDicePlayers
+    ? [...dicePlayers].sort((a, b) => b.diceCount - a.diceCount)
+    : room.seats.map((seat) => {
+        const addr = seat.wallet.toBase58();
+        const isSeatYou = addr === you;
+        return {
+          address: addr,
+          name: isSeatYou ? "You" : nameOf?.(addr) ?? shortKey(addr),
+          diceCount: seat.alive ? 1 : 0,
+          isAlive: seat.alive,
+          isHuman: isSeatYou,
+        };
       });
-    }
-  }, [youWon]);
 
   return (
     <div className="flex flex-col max-w-md w-full mx-auto space-y-5 animate-in fade-in duration-300">
@@ -53,38 +84,36 @@ export function FinishedScreen({
       <div
         className={`p-6 rounded-3xl border text-center flex flex-col items-center space-y-3 ${
           youWon
-            ? "bg-[#201d10] border-[#FBD53D]/40 shadow-[0_0_30px_-5px_rgba(251, 213, 61,0.3)]"
+            ? "bg-[#201d10] border-[#FBD53D]/40 shadow-[0_0_30px_-5px_rgba(251,213,61,0.3)]"
             : "bg-[#171b14] border-[#2a3122]"
         }`}
       >
         <span className="text-5xl select-none">{youWon ? "👑" : "🎲"}</span>
 
         <h2
-          className={`text-3xl font-black italic tracking-tight ${
+          className={`text-3xl font-black tracking-wide ${
             youWon ? "text-[#FBD53D]" : "text-[#f1f4ec]"
           }`}
         >
-          {youWon
-            ? "BLUFF CHAMPION"
-            : "Eliminated from Table"}
+          {youWon ? "BLUFF CHAMPION" : "Eliminated from Table"}
         </h2>
 
         {champion && (
           <Avatar
-            who={champion.wallet.toBase58()}
+            who={champion.address}
             name={championName}
             size={72}
-            you={champion.wallet.toBase58() === you}
+            you={isYou}
           />
         )}
 
         <div className="inline-flex px-4 py-1.5 rounded-full bg-[#FBD53D] text-[#141004] text-xs font-black uppercase tracking-wider">
-          {survivors.length === 1 ? `${championName} Takes Pot` : `${survivors.length} Survivors Split`}
+          {isSoloWinner ? `${championName} Takes Entire Pot` : `${survivors.length} Survivors Split`}
         </div>
 
         <p className="text-xs text-[#98a08e] max-w-xs leading-relaxed">
           {youWon
-            ? `You out-bluffed every opponent at the table! Last player standing with dice.`
+            ? "You out-bluffed every opponent at the table! Last player standing with dice."
             : `${championName} survived with the last remaining dice at the table.`}
         </p>
       </div>
@@ -95,12 +124,12 @@ export function FinishedScreen({
           {settled ? "SETTLED ON SOLANA" : "THE TOTAL POT"}
         </span>
 
-        <div className="text-4xl font-black text-[#FBD53D] tracking-tight">
+        <div className="text-4xl font-black text-[#FBD53D] tracking-wide">
           ◎ {(pot / 1e9).toFixed(2)}
         </div>
 
         <p className="text-xs text-[#f1f4ec] font-medium">
-          {survivors.length === 1
+          {isSoloWinner
             ? youWon
               ? "All of it is yours."
               : `All of it went to ${championName}.`
@@ -119,39 +148,54 @@ export function FinishedScreen({
         </p>
       </div>
 
-      {/* Last Words Recap List */}
+      {/* Final Table Standings */}
       <div className="space-y-2.5">
         <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
-          THE LAST WORD
+          FINAL TABLE STANDINGS
         </span>
         <div className="space-y-2">
-          {room.seats.map((seat, i) => {
-            const word = room.lastWords[i];
-            if (!word) return null;
-            const key = seat.wallet.toBase58();
-            const isYou = key === you;
-            const name = isYou ? "You" : nameOf?.(key) ?? shortKey(key);
+          {standingsList.map((player) => {
+            const isPlayerYou = player.address === you || player.isHuman;
+            const isWinner = isSoloWinner && player.address === champion?.address;
 
             return (
               <div
-                key={key}
-                className={`flex items-center justify-between p-3 rounded-xl bg-[#171b14] border border-[#2a3122] ${
-                  !seat.alive ? "opacity-50" : ""
+                key={player.address}
+                className={`flex items-center justify-between p-3 rounded-xl border ${
+                  isWinner
+                    ? "bg-[#201d10] border-[#FBD53D]/40"
+                    : player.isAlive
+                    ? "bg-[#171b14] border-[#2a3122]"
+                    : "bg-[#171b14]/50 border-[#2a3122]/60 opacity-60"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <Avatar who={key} name={name} size={28} out={!seat.alive} you={isYou} />
-                  <span className={`text-xs font-bold ${isYou ? "text-[#FBD53D]" : "text-[#f1f4ec]"}`}>
-                    {name}
-                  </span>
+                  <Avatar who={player.address} name={player.name} size={28} out={!player.isAlive} you={isPlayerYou} />
+                  <div>
+                    <span className={`text-xs font-bold block ${isPlayerYou ? "text-[#FBD53D]" : "text-[#f1f4ec]"}`}>
+                      {isPlayerYou ? "You" : player.name}
+                    </span>
+                    <span className="text-[10px] text-[#8b9580]">
+                      {player.diceCount > 0 ? `${player.diceCount} dice remaining` : "0 dice"}
+                    </span>
+                  </div>
                 </div>
-                <span
-                  className={`text-xs font-extrabold capitalize ${
-                    !seat.alive ? "text-[#f2603c] line-through" : "text-[#f1f4ec]"
-                  }`}
-                >
-                  "{word}"
-                </span>
+
+                <div className="flex items-center gap-1.5">
+                  {isWinner ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-[#FBD53D] uppercase">
+                      <Trophy className="w-3.5 h-3.5" />
+                      <span>Winner</span>
+                    </span>
+                  ) : player.isAlive ? (
+                    <span className="text-[11px] font-bold text-[#a3e635]">Survivor</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#f2603c]">
+                      <Skull className="w-3 h-3" />
+                      <span>Out</span>
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}

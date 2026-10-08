@@ -4,10 +4,10 @@ export function Wordmark({ small = false }: { small?: boolean }) {
   return (
     <div className="flex items-center gap-3.5 sm:gap-4 select-none">
       <span
-        className={`font-black italic tracking-tighter text-[#FBD53D] drop-shadow-[0_0_16px_rgba(251,213,61,0.4)] ${
+        className={`font-black tracking-wider text-[#FBD53D] drop-shadow-[0_0_16px_rgba(251,213,61,0.4)] ${
           small ? "text-2xl" : "text-5xl sm:text-6xl"
         }`}
-        style={{ fontFamily: "var(--font-display, sans-serif)" }}
+        style={{ fontFamily: "var(--font-display, sans-serif)", letterSpacing: small ? "0.05em" : "0.08em" }}
       >
         BLUFF
       </span>

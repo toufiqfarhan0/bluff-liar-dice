@@ -12,6 +12,8 @@ export function JoiningScreen({
   onJoinRoom,
   onBack,
   busy,
+  callsign,
+  onCallsignChange,
 }: {
   preview: RoomState;
   vote: Ending;
@@ -19,12 +21,14 @@ export function JoiningScreen({
   onJoinRoom: () => void;
   onBack: () => void;
   busy: boolean;
+  callsign: string;
+  onCallsignChange: (name: string) => void;
 }) {
   const stakeSol = (Number(preview.stake) / 1e9).toFixed(3);
   const potSol = ((Number(preview.stake) * preview.seats.length) / 1e9).toFixed(3);
 
   return (
-    <div className="flex flex-col max-w-md w-full mx-auto space-y-6 animate-in fade-in duration-200">
+    <div className="flex flex-col max-w-md w-full mx-auto space-y-5 animate-in fade-in duration-200">
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
@@ -37,7 +41,7 @@ export function JoiningScreen({
           <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
             JOINING GAME
           </span>
-          <h2 className="text-2xl font-black italic tracking-tight text-[#f1f4ec]">
+          <h2 className="text-2xl font-black tracking-wide text-[#f1f4ec]">
             This Room
           </h2>
         </div>
@@ -64,6 +68,22 @@ export function JoiningScreen({
           WHO IS IN
         </span>
         <Seats room={preview} />
+      </div>
+
+      {/* Callsign / Player Name */}
+      <div className="space-y-1.5 p-4 bg-[#171b14] border border-[#2a3122] rounded-2xl">
+        <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
+          YOUR CALLSIGN
+        </label>
+        <input
+          type="text"
+          value={callsign}
+          onChange={(e) => onCallsignChange(e.target.value)}
+          maxLength={16}
+          placeholder="Enter player name (e.g. Farhan)"
+          disabled={busy}
+          className="w-full bg-[#1f241a] border border-[#2a3122] focus:border-[#FBD53D] rounded-xl px-4 py-2.5 text-sm text-[#f1f4ec] placeholder-[#6b7362] outline-none transition-colors"
+        />
       </div>
 
       <EndingTally room={preview} />

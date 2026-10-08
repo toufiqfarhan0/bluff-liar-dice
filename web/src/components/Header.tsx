@@ -2,7 +2,7 @@ import React from "react";
 import { ConnectedWallet } from "../lib/wallet";
 import { Wordmark } from "./Wordmark";
 import { shortKey } from "./Avatar";
-import { Flame, LogOut, ShieldCheck, Wallet } from "lucide-react";
+import { Flame, HelpCircle, LogOut, Wallet } from "lucide-react";
 
 export function Header({
   wallet,
@@ -10,6 +10,7 @@ export function Header({
   onOpenWallet,
   onDisconnect,
   onOpenFairness,
+  onOpenHelp,
   onGoHome,
   onAirdrop,
 }: {
@@ -18,12 +19,13 @@ export function Header({
   onOpenWallet: () => void;
   onDisconnect: () => void;
   onOpenFairness: () => void;
+  onOpenHelp?: (tab?: "rules" | "tutorial" | "fairness") => void;
   onGoHome: () => void;
   onAirdrop?: () => void;
 }) {
   return (
-    <header className="w-full flex items-center justify-between py-4 px-4 sm:px-6 border-b border-[#2a3122]/50 bg-[#0c0f0b]/80 backdrop-blur-md sticky top-0 z-40">
-      <div className="flex items-center gap-4">
+    <header className="w-full flex items-center justify-between py-2.5 sm:py-3 px-4 sm:px-6 border-b border-[#2a3122]/50 bg-[#0c0f0b]/80 backdrop-blur-md sticky top-0 z-40">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button
           onClick={onGoHome}
           className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
@@ -31,12 +33,14 @@ export function Header({
           <Wordmark small />
         </button>
 
+        {/* Dedicated Help Button */}
         <button
-          onClick={onOpenFairness}
-          className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-[#98a08e] hover:text-[#FBD53D] bg-[#171b14] border border-[#2a3122] px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+          type="button"
+          onClick={() => onOpenHelp ? onOpenHelp("rules") : onOpenFairness()}
+          className="flex items-center gap-1.5 text-xs font-bold text-[#FBD53D] bg-[#201d10]/70 border border-[#FBD53D]/60 hover:border-[#FBD53D] hover:bg-[#FBD53D]/15 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-[0_0_12px_-2px_rgba(251,213,61,0.25)]"
         >
-          <ShieldCheck className="w-3.5 h-3.5 text-[#FBD53D]" />
-          <span>Why this is fair</span>
+          <HelpCircle className="w-3.5 h-3.5 text-[#FBD53D]" />
+          <span>Help</span>
         </button>
       </div>
 
