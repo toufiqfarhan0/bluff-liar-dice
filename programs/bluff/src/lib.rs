@@ -34,7 +34,7 @@ pub mod state;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("BvKkFUEdiin8KcF6m9CBqYoN9FncGFFy4cxhe5QZSvWN");
+declare_id!("DtPSuiwYsauE5PwRWZfYpu2ZeCxZ7iunSZhXvHFWWfx7");
 
 pub const ROOM_SEED: &[u8] = b"room";
 pub const VAULT_SEED: &[u8] = b"vault";

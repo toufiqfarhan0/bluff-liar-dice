@@ -18,6 +18,7 @@ keys/
 *.pem
 *.key
 id.json
+*keypair*.json
 
 # Logs & Temporary Files
 *.log

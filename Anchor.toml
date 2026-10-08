@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-bluff = "BvKkFUEdiin8KcF6m9CBqYoN9FncGFFy4cxhe5QZSvWN"
+bluff = "DtPSuiwYsauE5PwRWZfYpu2ZeCxZ7iunSZhXvHFWWfx7"
 
 [programs.devnet]
-bluff = "BvKkFUEdiin8KcF6m9CBqYoN9FncGFFy4cxhe5QZSvWN"
+bluff = "DtPSuiwYsauE5PwRWZfYpu2ZeCxZ7iunSZhXvHFWWfx7"
 
 [provider]
 cluster = "devnet"
