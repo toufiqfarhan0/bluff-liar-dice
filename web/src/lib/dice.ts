@@ -47,6 +47,7 @@ export interface ShowdownResult {
   loserName: string;
   diceLost: number;
   reason: string;
+  isTimeout?: boolean;
 }
 
 /** Roll N random dice (values 1 to 6) */

@@ -1,7 +1,7 @@
 import React from "react";
 import { Bid, DieFace, faceNamePlural } from "../lib/dice";
 import { Avatar, shortKey } from "./Avatar";
-import { Clock, Dices, Flame } from "lucide-react";
+import { Clock, Dices } from "lucide-react";
 import { DieIcon } from "./Die";
 
 export interface SeatInfo {
@@ -168,8 +168,16 @@ export function BluffTable({
             isLarge ? "text-xs" : "text-[10px]"
           } text-[#6b7362]`}
         >
-          <span className="flex items-center gap-1.5 font-mono text-[#98a08e]">
-            <Clock className={`${isLarge ? "w-3.5 h-3.5" : "w-3 h-3"} text-[#FBD53D]`} />
+          <span
+            className={`flex items-center gap-1.5 font-mono ${
+              turnTimeLeft <= 5 ? "text-[#f2603c] font-black animate-pulse" : "text-[#98a08e]"
+            }`}
+          >
+            <Clock
+              className={`${isLarge ? "w-3.5 h-3.5" : "w-3 h-3"} ${
+                turnTimeLeft <= 5 ? "text-[#f2603c]" : "text-[#FBD53D]"
+              }`}
+            />
             {turnTimeLeft}s
           </span>
           <span>·</span>

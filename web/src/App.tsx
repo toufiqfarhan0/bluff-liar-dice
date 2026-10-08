@@ -122,6 +122,7 @@ export default function App() {
   const myTabId = useRef(Math.random().toString(36).slice(2)).current;
   const lastPolledIdRef = useRef(0);
   const advancingRoundRef = useRef(false);
+  const activeSessionIdRef = useRef(0);
 
   const handleCallsignChange = (name: string) => {
     setCallsign(name);
@@ -233,22 +234,24 @@ export default function App() {
 
   const refreshRoom = useCallback(async () => {
     if (!ref) return;
+    const sessionId = activeSessionIdRef.current;
     try {
       const key = bluff.room(ref.host, ref.roomId);
       const data = await accountData(endpoint.url, key, endpoint.token);
-      if (!data) return;
+      if (!data || sessionId !== activeSessionIdRef.current || !ref) return;
       const next = bluff.decodeRoom(data);
+      if (sessionId !== activeSessionIdRef.current) return;
       setRoom(next);
       setPot(await lamportsOf(BASE_RPC, bluff.vault(key)));
     } catch {}
   }, [ref, endpoint]);
 
   useEffect(() => {
-    if (!ref) return;
+    if (!ref || screen === "finished") return;
     refreshRoom();
     const id = setInterval(refreshRoom, 1200);
     return () => clearInterval(id);
-  }, [ref, refreshRoom]);
+  }, [ref, screen, refreshRoom]);
 
   /* ------------------------------------------------- real-time sync & react to game state */
 
@@ -366,7 +369,9 @@ export default function App() {
           logActivity(`${challenger} called the bluff on ${currentBid.quantity} × face ${currentBid.face}.`);
         }
         if (msg.showdown) {
-          const outcomeLabel = msg.showdown.wasBluff
+          const outcomeLabel = msg.showdown.isTimeout
+            ? `${msg.showdown.loserName} timed out — penalized 1 die for inactivity.`
+            : msg.showdown.wasBluff
             ? "Bluff caught — bidder loses."
             : "Bid was good — challenger loses.";
           logActivity(outcomeLabel, "text-[#f2603c]");
@@ -452,6 +457,9 @@ export default function App() {
     // Request sync from existing peers
     sendSyncEvent({ type: "REQUEST_SYNC" });
 
+    // Stop continuous HTTP relay polling once game is finished
+    if (screen === "finished") return;
+
     // HTTP relay polling for cross-browser synchronization
     const pollInterval = setInterval(async () => {
       try {
@@ -468,18 +476,18 @@ export default function App() {
       broadcastRef.current = null;
       clearInterval(pollInterval);
     };
-  }, [ref, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
+  }, [ref, screen, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
 
   useEffect(() => {
-    if (!room) return;
+    if (!ref || !room) return;
+
+    // Never hijack lobby, opening room creation, reveal showdown, or finished screens
+    if (screen === "lobby" || screen === "opening" || screen === "reveal" || screen === "finished") return;
 
     if (room.phase === Phase.Open) {
-      setScreen("waiting");
+      if (screen !== "waiting") setScreen("waiting");
       return;
     }
-
-    // Never interrupt the reveal showdown or finished victory screen
-    if (screen === "reveal" || screen === "finished") return;
 
     if (room.phase === Phase.Settled) {
       setScreen("finished");
@@ -494,7 +502,7 @@ export default function App() {
     }
 
     if (room.phase === Phase.Playing) {
-      if (screen === "waiting" || screen === "opening" || screen === "joining") {
+      if (screen === "waiting" || screen === "joining") {
         setScreen("playing");
       }
       setDicePlayers((prev) => {
@@ -505,30 +513,16 @@ export default function App() {
         return prev;
       });
     }
-  }, [room, screen, dicePlayers, createDicePlayers]);
+  }, [ref, room, screen, dicePlayers, createDicePlayers]);
 
   // Turn countdown timer
   useEffect(() => {
     if (screen !== "playing") return;
     const interval = setInterval(() => {
-      setTurnTimeLeft((prev) => {
-        if (prev <= 1) {
-          const survivors = dicePlayers.filter((p) => p.isAlive);
-          if (survivors.length > 0) {
-            const nextTurn = (turnIndex + 1) % survivors.length;
-            setTurnIndex(nextTurn);
-            sendSyncEvent({
-              type: "TURN_TIMEOUT",
-              nextTurnIndex: nextTurn,
-            });
-          }
-          return 20;
-        }
-        return prev - 1;
-      });
+      setTurnTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
-  }, [screen, dicePlayers, turnIndex, sendSyncEvent]);
+  }, [screen]);
 
   // Showdown auto-advance countdown
   useEffect(() => {
@@ -809,6 +803,126 @@ export default function App() {
     });
   };
 
+  // Approach A: Anti-AFK Direct Timeout Penalty
+  // When turn clock hits 0s, the timed-out player immediately forfeits 1 die for inactivity.
+  const handleTimeoutPenalty = (timedOutAddress: string, timedOutName: string) => {
+    const timedOutPlayer = dicePlayers.find((p) => p.address === timedOutAddress);
+    if (!timedOutPlayer) return;
+
+    setLastActions((prev) => ({
+      ...prev,
+      [timedOutAddress]: "Timed out (-1 Die)",
+    }));
+
+    const isMe = timedOutAddress === wallet?.address;
+    const displayName = isMe ? "You" : timedOutName;
+
+    logActivity(`${displayName} timed out (20s) — penalized 1 die for inactivity!`, "text-[#f2603c]");
+
+    const nextCount = Math.max(0, timedOutPlayer.diceCount - 1);
+    const loserActionText = `${displayName} lost a die for timing out — ${nextCount} left.`;
+    logActivity(loserActionText, "text-[#f2603c]");
+
+    const result: ShowdownResult = {
+      bid: currentBid || {
+        quantity: 1,
+        face: 1 as DieFace,
+        bidderAddress: timedOutAddress,
+        bidderName: timedOutName,
+      },
+      challengerAddress: timedOutAddress,
+      challengerName: timedOutName,
+      totalMatching: 0,
+      wasBluff: false,
+      loserAddress: timedOutAddress,
+      loserName: timedOutName,
+      diceLost: 1,
+      reason: `${displayName} exceeded the 20-second turn limit and was penalized 1 die for inactivity.`,
+      isTimeout: true,
+    };
+
+    setShowdown(result);
+
+    // Subtract 1 die from the timed out player
+    const updatedPlayers = dicePlayers.map((p) => {
+      if (p.address === timedOutAddress) {
+        return {
+          ...p,
+          diceCount: nextCount,
+          isAlive: nextCount > 0,
+        };
+      }
+      return p;
+    });
+
+    setDicePlayers(updatedPlayers);
+    setShowdownCountdown(12);
+    setScreen("reveal");
+
+    // Submit timeout activity to MagicBlock TEE Rollup
+    if (endpoint?.url && endpoint.url !== BASE_RPC && ref) {
+      const callerKeypair = isMe
+        ? session
+        : bots.find((b) => b.keypair.publicKey.toBase58() === timedOutAddress)?.keypair;
+      if (callerKeypair) {
+        (async () => {
+          try {
+            const fallbackSig = await sendLocal(
+              endpoint.url,
+              [callerKeypair],
+              [
+                SystemProgram.transfer({
+                  fromPubkey: callerKeypair.publicKey,
+                  toPubkey: callerKeypair.publicKey,
+                  lamports: 0,
+                }),
+              ],
+              endpoint.token,
+            );
+            recordActivity({
+              signature: fallbackSig,
+              network: "MagicBlock ER",
+              label: `${displayName} timed out in TEE (-1 Die)`,
+              status: "confirmed",
+              time: Date.now(),
+            });
+          } catch (fallbackErr) {
+            console.warn("Rollup timeout fallback failed:", fallbackErr);
+          }
+        })();
+      }
+    }
+
+    // Sync across tabs & browsers
+    sendSyncEvent({
+      type: "CALL_BLUFF",
+      challengerAddress: timedOutAddress,
+      challengerName: timedOutName,
+      showdown: result,
+      updatedPlayers,
+    });
+  };
+
+  useEffect(() => {
+    if (screen !== "playing" || turnTimeLeft > 0) return;
+
+    const survivors = dicePlayers.filter((p) => p.isAlive && p.diceCount > 0);
+    if (survivors.length <= 1) return;
+
+    const currentTurnPlayer = survivors[turnIndex % survivors.length];
+    if (!currentTurnPlayer) return;
+
+    const isMe = currentTurnPlayer.address === wallet?.address;
+
+    if (isMe) {
+      addToast("error", "20s turn expired! You lost 1 die for inactivity.");
+    } else {
+      addToast("error", `${currentTurnPlayer.name} timed out (20s) and lost 1 die for inactivity!`);
+    }
+
+    handleTimeoutPenalty(currentTurnPlayer.address, currentTurnPlayer.name);
+  }, [screen, turnTimeLeft, turnIndex, dicePlayers, wallet]);
+
   const handleNextRound = () => {
     if (screen !== "reveal") return;
     if (advancingRoundRef.current) return;
@@ -905,8 +1019,15 @@ export default function App() {
   /* ------------------------------------------------------------- actions */
 
   const onAgain = () => {
+    activeSessionIdRef.current += 1;
+    if (broadcastRef.current) {
+      broadcastRef.current.close();
+      broadcastRef.current = null;
+    }
+    lastPolledIdRef.current = 0;
     setRef(null);
     setRoom(null);
+    setPot(0);
     setSession(null);
     setPreview(null);
     setPending(null);
@@ -1218,8 +1339,11 @@ export default function App() {
 
   const onSettle = () =>
     run("Settling pot on Solana", async () => {
-      const { host, roomId } = ref!;
-      if (room!.phase === Phase.Finished) {
+      if (!ref) throw new Error("No active room reference.");
+      const { host, roomId } = ref;
+
+      // 1. If connected to MagicBlock TEE Rollup, try to finish & commit back to Solana L1
+      if (endpoint?.url && endpoint.url !== BASE_RPC) {
         try {
           const finishSig = await sendLocal(
             endpoint.url,
@@ -1230,26 +1354,58 @@ export default function App() {
           recordActivity({
             signature: finishSig,
             network: "MagicBlock ER",
-            label: "Undelegate room from MagicBlock TEE",
+            label: "Commit & Undelegate room back to Solana",
             status: "confirmed",
             time: Date.now(),
           });
           await sleep(14000);
-        } catch {
-          // Handed back already
+        } catch (e: any) {
+          console.warn("Rollup finishRoom note:", e?.message);
         }
       }
       setEndpoint({ url: BASE_RPC });
 
-      const data = await accountData(BASE_RPC, bluff.room(host, roomId));
-      const onBase = bluff.decodeRoom(data!);
-      const winners = onBase.seats.filter((x: any) => x.alive).map((x: any) => x.wallet);
+      // 2. Fetch room state from Solana Devnet base layer
+      const key = bluff.room(host, roomId);
+      const data = await accountData(BASE_RPC, key);
 
-      const settleSig = await sendLocal(
-        BASE_RPC,
-        [session!],
-        [bluff.settle(host, roomId, session!.publicKey, winners)],
-      );
+      if (!data) {
+        throw new Error("Room account not confirmed on Solana Devnet yet. Please wait a moment.");
+      }
+
+      const onBase = bluff.decodeRoom(data);
+
+      if (onBase.phase === Phase.Settled) {
+        addToast("success", "Pot has already been settled and paid out!");
+        await refreshBalance();
+        return;
+      }
+
+      // Check survivors on base layer
+      const survivorsOnBase = onBase.seats.filter((x: any) => x.alive).map((x: any) => x.wallet);
+      const payees = survivorsOnBase.length > 0
+        ? survivorsOnBase
+        : onBase.seats.map((x: any) => x.wallet);
+
+      // 3. Settle pot on Solana Base Layer (with session or wallet fallback)
+      let settleSig = "";
+      try {
+        settleSig = await sendLocal(
+          BASE_RPC,
+          [session!],
+          [bluff.settle(host, roomId, session!.publicKey, payees)],
+        );
+      } catch (sessionErr: any) {
+        console.warn("Session settle failed, trying connected wallet as signer...", sessionErr);
+        if (wallet) {
+          settleSig = await sendAsWallet([
+            bluff.settle(host, roomId, wallet.publicKey, payees),
+          ]);
+        } else {
+          throw sessionErr;
+        }
+      }
+
       setSettleSignature(settleSig);
       recordActivity({
         signature: settleSig,
@@ -1260,7 +1416,7 @@ export default function App() {
       });
       await refreshRoom();
       await refreshBalance();
-      addToast("success", "Pot successfully paid out on Solana!");
+      addToast("success", "Pot successfully paid out on Solana Devnet!");
     });
 
   const mySeat = room?.seats.find(
@@ -1454,7 +1610,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Game Guide, Rules & Fairness Modal */}
+      {/* Game Guide & Rules Modal */}
       <HelpModal
         open={helpOpen}
         initialTab={helpTab}

@@ -17,7 +17,9 @@ export function ShowdownScreen({
   nextRoundCountdown: number;
   you?: string;
 }) {
-  const { bid, totalMatching, wasBluff, loserName, reason } = showdown;
+  const { bid, totalMatching, wasBluff, loserName, reason, isTimeout } = showdown;
+  const isLoserYou = you ? showdown.loserAddress === you : false;
+  const displayLoserName = isLoserYou ? "You" : loserName;
 
   return (
     <div className="flex flex-col max-w-lg w-full mx-auto space-y-3 animate-in fade-in duration-300">
@@ -25,58 +27,90 @@ export function ShowdownScreen({
       <div className="text-center space-y-0.5">
         <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f2603c]/20 border border-[#f2603c]/40 text-[#f2603c] text-[10px] font-black tracking-widest uppercase">
           <ShieldAlert className="w-3.5 h-3.5" />
-          <span>SHOWDOWN · CUPS LIFTED</span>
+          <span>{isTimeout ? "TURN TIMEOUT · PENALTY" : "SHOWDOWN · CUPS LIFTED"}</span>
         </div>
         <h2 className="text-xl sm:text-2xl font-black tracking-wide text-[#f1f4ec]">
-          {wasBluff ? "Bluff Caught!" : "Claim was True!"}
+          {isTimeout
+            ? `${displayLoserName} Timed Out!`
+            : wasBluff
+            ? "Bluff Caught!"
+            : "Claim was True!"}
         </h2>
         <p className="text-[11px] text-[#98a08e]">
-          The TEE enclaves have decrypted and revealed all player cups simultaneously.
+          {isTimeout
+            ? "Player exceeded the 20-second turn limit and forfeited 1 die for inactivity."
+            : "The TEE enclaves have decrypted and revealed all player cups simultaneously."}
         </p>
       </div>
 
-      {/* Claim vs Actual Result Card */}
-      <div className={`p-3 rounded-2xl border ${
-        wasBluff ? "bg-[#f2603c]/10 border-[#f2603c]/40" : "bg-[#201d10] border-[#FBD53D]/40"
-      } space-y-1.5`}>
-        <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider">
-          <span className="text-[#98a08e]">CHALLENGED CLAIM</span>
-          <span className="text-[#f1f4ec]">ACTUAL ON TABLE</span>
-        </div>
+      {/* Claim vs Actual Result Card (or Timeout Penalty Card) */}
+      {isTimeout ? (
+        <div className="p-3.5 rounded-2xl border bg-[#f2603c]/10 border-[#f2603c]/40 space-y-2">
+          <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider">
+            <span className="text-[#f2603c]">ANTI-AFK ENFORCEMENT</span>
+            <span className="text-[#98a08e]">PENALTY APPLIED</span>
+          </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-black text-[#f1f4ec] font-mono">
-              {bid.quantity}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#f1f4ec]">
+              {displayLoserName} exceeded the 20-second turn limit
             </span>
-            <div className="w-5 h-5 inline-flex items-center justify-center">
-              <DieIcon face={bid.face} className="w-full h-full" />
+            <span className="text-[11px] font-black text-[#f2603c] bg-[#f2603c]/20 border border-[#f2603c]/40 px-2 py-0.5 rounded-full">
+              -1 Die Penalty
+            </span>
+          </div>
+
+          <div className="pt-1 text-[11px] text-[#98a08e] border-t border-[#2a3122]/60 leading-snug">
+            {isTimeout
+              ? isLoserYou
+                ? "You exceeded the 20-second turn limit and were penalized 1 die for inactivity."
+                : `${displayLoserName} exceeded the 20-second turn limit and was penalized 1 die for inactivity.`
+              : reason}
+          </div>
+        </div>
+      ) : (
+        <div className={`p-3 rounded-2xl border ${
+          wasBluff ? "bg-[#f2603c]/10 border-[#f2603c]/40" : "bg-[#201d10] border-[#FBD53D]/40"
+        } space-y-1.5`}>
+          <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider">
+            <span className="text-[#98a08e]">CHALLENGED CLAIM</span>
+            <span className="text-[#f1f4ec]">ACTUAL ON TABLE</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-black text-[#f1f4ec] font-mono">
+                {bid.quantity}
+              </span>
+              <div className="w-5 h-5 inline-flex items-center justify-center">
+                <DieIcon face={bid.face} className="w-full h-full" />
+              </div>
+              <span className="text-[11px] text-[#98a08e]">
+                claimed by <strong className="text-[#f1f4ec]">{bid.bidderName}</strong>
+              </span>
             </div>
-            <span className="text-[11px] text-[#98a08e]">
-              claimed by <strong className="text-[#f1f4ec]">{bid.bidderName}</strong>
-            </span>
+
+            <div className="flex items-center gap-1.5">
+              <span className={`text-xl font-black font-mono ${wasBluff ? "text-[#f2603c]" : "text-[#FBD53D]"}`}>
+                {totalMatching}
+              </span>
+              <span className="text-[11px] text-[#98a08e]">
+                found {faceNamePlural(bid.face)}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className={`text-xl font-black font-mono ${wasBluff ? "text-[#f2603c]" : "text-[#FBD53D]"}`}>
-              {totalMatching}
-            </span>
-            <span className="text-[11px] text-[#98a08e]">
-              found {faceNamePlural(bid.face)}
-            </span>
+          <div className="pt-1 text-[11px] text-[#f1f4ec] font-semibold border-t border-[#2a3122]/60 leading-snug">
+            {reason}
           </div>
         </div>
-
-        <div className="pt-1 text-[11px] text-[#f1f4ec] font-semibold border-t border-[#2a3122]/60 leading-snug">
-          {reason}
-        </div>
-      </div>
+      )}
 
       {/* All Players Cups & Dice Revealed */}
       <div className="p-3 bg-[#12160e] border border-[#2a3122] rounded-2xl space-y-2">
         <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362]">
           <span>ALL REVEALED HANDS</span>
-          <span className="text-[#98a08e]">Matching dice highlighted</span>
+          <span className="text-[#98a08e]">{isTimeout ? "All player cups exposed" : "Matching dice highlighted"}</span>
         </div>
 
         <div className="space-y-1.5">
@@ -102,7 +136,7 @@ export function ShowdownScreen({
                       </span>
                       {isLoser && (
                         <span className="text-[8px] bg-[#f2603c] text-white font-extrabold px-1.5 py-0.2 rounded-full uppercase">
-                          -1 Die
+                          {isTimeout ? "-1 Die (AFK)" : "-1 Die"}
                         </span>
                       )}
                     </div>
@@ -116,7 +150,7 @@ export function ShowdownScreen({
                 <div className="flex items-center gap-2 sm:gap-2.5">
                   {player.hand.length > 0 ? (
                     player.hand.map((d, idx) => {
-                      const isMatch = d === bid.face;
+                      const isMatch = !isTimeout && d === bid.face;
                       return <DieItem key={idx} face={d} highlighted={isMatch} size="sm" />;
                     })
                   ) : (

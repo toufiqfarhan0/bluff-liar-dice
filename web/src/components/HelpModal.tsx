@@ -17,63 +17,13 @@ import {
   Coins,
   Divide,
   Wallet,
+  Clock,
 } from "lucide-react";
 import { Button } from "./Button";
 
 export type HelpTab = "rules" | "tutorial" | "fairness";
 
-interface Guarantee {
-  title: string;
-  body: string;
-  by: string;
-  badgeBg: string;
-  badgeText: string;
-}
-
-const GUARANTEES: Guarantee[] = [
-  {
-    title: "Nobody sees your dice",
-    body: "Not opponents, not the host, not us. Your dice are encrypted inside hardware enclaves and only decrypted on Showdown.",
-    by: "Private Rollup (TEE)",
-    badgeBg: "bg-[#241d3d]",
-    badgeText: "text-[#b9a9ff]",
-  },
-  {
-    title: "Verifiable fair dice rolls",
-    body: "Dice rolls are generated using on-chain verifiable randomness (VRF) — nobody can predict or manipulate them.",
-    by: "VRF Oracle",
-    badgeBg: "bg-[#2b2a12]",
-    badgeText: "text-[#FBD53D]",
-  },
-  {
-    title: "Simultaneous cup showdown",
-    body: "When someone calls 'Bluff!', all cups lift at the exact same millisecond. No player can alter or peek early.",
-    by: "Private Rollup (TEE)",
-    badgeBg: "bg-[#241d3d]",
-    badgeText: "text-[#b9a9ff]",
-  },
-  {
-    title: "Your stake never leaves Solana",
-    body: "The rollup runs fast gameplay. Stakes sit securely in a Solana L1 vault PDA it cannot touch.",
-    by: "Solana Vault PDA",
-    badgeBg: "bg-[#12291f]",
-    badgeText: "text-[#5fd39a]",
-  },
-  {
-    title: "Instant refund if game cancels",
-    body: "Leave before a game starts and your buy-in refunds immediately. Abandoned tables can be settled by anyone.",
-    by: "On Chain",
-    badgeBg: "bg-[#1f241a]",
-    badgeText: "text-[#98a08e]",
-  },
-  {
-    title: "Open source, zero hidden state",
-    body: "Every transition rule is compiled to Solana BPF bytecode. Inspect the code, verify the build hash, run it locally.",
-    by: "Open Source",
-    badgeBg: "bg-[#1f241a]",
-    badgeText: "text-[#98a08e]",
-  },
-];
+import { GUARANTEES } from "./FairnessModal";
 
 export function HelpModal({
   open,
@@ -113,7 +63,7 @@ export function HelpModal({
       icon: Shield,
       title: "3. Call Bluff & Win Showdown",
       subtitle: "Simultaneous reveal and elimination",
-      body: "If you think the last bid is too high, challenge it by calling 'Bluff!'. All cups unlock at once. If the true table count meets or beats the bid, you lose a die; if not, the bidder loses a die. Be the last player standing to take the pot!",
+      body: "If you think the last bid is too high, challenge it by calling 'Bluff!'. Each player has 20 seconds to raise or challenge (passing is strictly illegal). If your clock hits 0s, you immediately forfeit 1 die for inactivity. When a showdown occurs, if the bid was valid the challenger loses a die; if it was a lie the bidder loses a die. Be the last player standing to take the pot!",
     },
     {
       icon: Coins,
@@ -214,6 +164,9 @@ export function HelpModal({
                     Instead of bidding higher, the current player can challenge the last bid by calling <strong className="text-[#f2603c]">"Bluff!"</strong>.
                   </li>
                   <li>
+                    <strong className="text-[#f1f4ec]">20-Second Turn Clock & Anti-AFK Penalty:</strong> There is strictly no passing or checking in Liar's Dice. On your turn, you have 20 seconds to raise the bid or challenge. If your clock expires at 0s, you <strong className="text-[#f2603c]">immediately forfeit 1 die</strong> for inactivity/stalling. An AFK player will lose all 5 dice within 5 rounds and be completely eliminated, ensuring only active players can win the pot.
+                  </li>
+                  <li>
                     A challenge lifts all cups simultaneously and counts every die on the table matching the bid face.
                   </li>
                   <li>
@@ -297,6 +250,48 @@ export function HelpModal({
                     <p className="text-[11px]">
                       When the game concludes, the winner(s) click <strong className="text-[#FBD53D]">"CLAIM POT"</strong>. This submits the on-chain <code className="text-[#FBD53D] font-mono text-[10px]">settle</code> transaction on Solana Devnet. The smart contract validates the survivors list, calculates each winner's exact share, and immediately transfers SOL lamports directly from the PDA Vault into the winner's Solana wallet!
                     </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* 20s Turn Timer & Anti-AFK Enforcement */}
+              <section className="p-3.5 rounded-2xl bg-[#171b14] border border-[#2a3122] space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#FBD53D]" />
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#FBD53D]">
+                    20-SECOND TURN CLOCK & ANTI-AFK PENALTY
+                  </span>
+                </div>
+                <div className="space-y-2 text-xs text-[#98a08e] leading-relaxed">
+                  <div className="p-2.5 rounded-xl bg-[#12150f] border border-[#232b1c] space-y-1">
+                    <span className="text-xs font-bold text-[#f1f4ec] flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#f2603c]" />
+                      No Passing Allowed (Strict Turn Limit)
+                    </span>
+                    <p className="text-[11px]">
+                      In Liar's Dice, checking or skipping a turn is <strong className="text-[#f1f4ec]">strictly illegal</strong>. Every player has exactly <strong className="text-[#FBD53D]">20 seconds</strong> to either raise the bid or challenge the previous player with a Bluff call.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#12150f] border border-[#232b1c] space-y-1">
+                    <span className="text-xs font-bold text-[#f1f4ec] flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-[#5fd39a]" />
+                      Anti-AFK Protection: 0s = Direct Die Penalty
+                    </span>
+                    <p className="text-[11px]">
+                      To prevent inactive, stalled, or disconnected players from idling while active players eliminate each other:
+                    </p>
+                    <ul className="list-disc pl-4 text-[11px] space-y-1 pt-0.5">
+                      <li>
+                        Reaching <strong className="text-[#f2603c]">0s</strong> immediately costs the timed-out player <strong className="text-[#f2603c]">1 die</strong> as an inactivity penalty.
+                      </li>
+                      <li>
+                        An AFK player loses a die every time they fail to act and will be <strong className="text-[#f1f4ec]">completely eliminated</strong> in 5 rounds.
+                      </li>
+                      <li>
+                        Inactive players can <strong className="text-[#f1f4ec]">never freeload or win by luck</strong>—the pot is reserved exclusively for the surviving active champions!
+                      </li>
+                    </ul>
                   </div>
                 </div>
               </section>
@@ -469,26 +464,4 @@ export function HelpModal({
   );
 }
 
-export function FairnessModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
-  return <HelpModal open={open} onClose={onClose} initialTab="fairness" />;
-}
-
-export function GuardBar({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl sm:rounded-2xl bg-[#171b14] border border-[#2a3122] hover:border-[#3f4a33] hover:bg-[#1c2219] transition-all cursor-pointer group text-[11px] sm:text-xs font-bold"
-    >
-      <ShieldCheck className="w-3.5 h-3.5 text-[#98a08e] group-hover:text-[#FBD53D] transition-colors" />
-      <span className="text-[#98a08e]">Protected by MagicBlock Private TEE</span>
-      <span className="text-[#FBD53D] font-extrabold underline underline-offset-2">Why?</span>
-    </button>
-  );
-}
+export { FairnessModal, GuardBar } from "./FairnessModal";
