@@ -3,14 +3,11 @@
  *
  * Rules:
  * 1. Each active player starts with INITIAL_DICE (5 dice).
- * 2. Dice values are 1 to 6. '1's (Aces) are WILD and count as any face value,
- *    unless the current bid is specifically on 1s.
+ * 2. Dice values are 1 to 6. Strict face matching: bids count only matching dice.
  * 3. Bidding Ladder:
  *    - To raise, a player must either:
  *      a) Bid a higher quantity of any face (e.g. 3 of anything -> 4 of anything).
  *      b) Bid the same quantity with a higher face value (e.g. 3 Fours -> 3 Fives).
- *      c) Special Ace rule: Switching to 1s requires at least half the quantity (rounded up).
- *         Switching from 1s to another face requires at least 2x + 1.
  * 4. Calling Bluff ("Liar!"):
  *    - Challenges the previous bidder's claim.
  *    - All cups lift. Total matching dice across the entire table are counted.
@@ -102,19 +99,13 @@ export function isValidRaise(
 
 /**
  * Count total matching dice on the table for a given bid face.
- * 1s (Aces) are WILD and count towards any face, unless the bid is on 1s.
+ * Natural matching: only dice that match the target face are counted.
  */
 export function countMatchingDice(allHands: DieFace[][], targetFace: DieFace): number {
   let count = 0;
   for (const hand of allHands) {
     for (const die of hand) {
-      if (targetFace === 1) {
-        // When bidding on 1s, only natural 1s count
-        if (die === 1) count++;
-      } else {
-        // When bidding on 2-6, matching face and wild 1s both count
-        if (die === targetFace || die === 1) count++;
-      }
+      if (die === targetFace) count++;
     }
   }
   return count;
@@ -163,7 +154,7 @@ export function dieSymbol(face: DieFace): string {
 export function faceName(face: DieFace): string {
   switch (face) {
     case 1:
-      return "One (Wild Ace)";
+      return "One";
     case 2:
       return "Two";
     case 3:
@@ -181,7 +172,7 @@ export function faceName(face: DieFace): string {
 export function faceNamePlural(face: DieFace): string {
   switch (face) {
     case 1:
-      return "Ones (Aces)";
+      return "Ones";
     case 2:
       return "Twos";
     case 3:

@@ -38,7 +38,7 @@ export function RingTable({
         const angle = (i / Math.max(1, seats.length)) * Math.PI * 2 - Math.PI / 2;
         const x = size / 2 + Math.cos(angle) * radius - face / 2;
         const y = size / 2 + Math.sin(angle) * radius - face / 2;
-        const name = seat.key === you ? "you" : nameOf?.(seat.key);
+        const resolvedName = nameOf?.(seat.key) || (seat.key === you ? "You" : "");
 
         return (
           <div
@@ -52,7 +52,7 @@ export function RingTable({
           >
             <Avatar
               who={seat.key}
-              name={name}
+              name={resolvedName}
               size={face}
               out={!seat.alive}
               you={seat.key === you}
@@ -66,7 +66,7 @@ export function RingTable({
                     : "text-[#98a08e]"
               }`}
             >
-              {seat.key === you ? "You" : name ?? ""}
+              {resolvedName}
             </span>
           </div>
         );

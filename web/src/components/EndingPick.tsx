@@ -14,7 +14,7 @@ export function EndingPick({
   return (
     <div className="space-y-2">
       <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362]">
-        IF IT COMES DOWN TO TWO
+        HEADS-UP SHOWDOWN TIEBREAK (FINAL 2 PLAYERS)
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -40,11 +40,11 @@ export function EndingPick({
                 value === Ending.Split ? "text-[#FBD53D]" : "text-[#f1f4ec]"
               }`}
             >
-              Split it
+              Split Pot
             </span>
           </div>
           <span className="text-xs text-[#98a08e] leading-snug">
-            You both walk away with half the pot.
+            If final 2 finalists tie or stalemate, split pot 50/50.
           </span>
         </button>
 
@@ -70,17 +70,17 @@ export function EndingPick({
                 value === Ending.Coin ? "text-[#FBD53D]" : "text-[#f1f4ec]"
               }`}
             >
-              Coin flip
+              Winner Takes All
             </span>
           </div>
           <span className="text-xs text-[#98a08e] leading-snug">
-            VRF oracle picks one; winner takes all.
+            Sole champion rule. Verifiable coin flip picks 1 winner.
           </span>
         </button>
       </div>
 
-      <p className="text-xs text-[#6b7362] leading-relaxed">
-        Everyone at the table votes and majority wins. A tie means you split.
+      <p className="text-[11px] text-[#6b7362] leading-relaxed">
+        Eliminate all opponents to win 100% solo! This tiebreak vote only triggers if the table reaches the final 2 finalists.
       </p>
     </div>
   );
@@ -89,17 +89,17 @@ export function EndingPick({
 export function EndingTally({ room }: { room: RoomState }) {
   const coins = room.seats.filter((seat) => seat.endingVote === Ending.Coin).length;
   const splits = room.seats.length - coins;
-  const winning = coins > splits ? "Coin flip" : "Split";
+  const winning = coins > splits ? "Winner Takes All" : "Split Pot";
 
   return (
     <div className="bg-[#171b14] border border-[#2a3122] rounded-2xl p-4 space-y-1.5">
       <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362]">
-        THE TABLE'S VOTE SO FAR
+        SHOWDOWN RULE VOTES
       </div>
       <div className="text-sm text-[#98a08e]">
         <strong className="text-[#f1f4ec] font-bold">{winning}</strong>
         {coins === splits
-          ? ` — room is tied ${coins}–${splits} (ties default to Split).`
+          ? ` — table is tied ${coins}–${splits} (defaults to Split Pot).`
           : ` — ${Math.max(coins, splits)} of ${room.seats.length} players favor this.`}
       </div>
     </div>
