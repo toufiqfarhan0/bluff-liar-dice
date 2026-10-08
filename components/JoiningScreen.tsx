@@ -24,7 +24,7 @@ export function JoiningScreen({
   busy: boolean;
   callsign: string;
   onCallsignChange: (name: string) => void;
-  balance?: number;
+  balance?: number | null;
 }) {
   const stakeSol = (Number(preview.stake) / 1e9).toFixed(3);
   const potSol = ((Number(preview.stake) * preview.seats.length) / 1e9).toFixed(3);
@@ -93,7 +93,7 @@ export function JoiningScreen({
       <EndingPick value={vote} onChange={onVoteChange} disabled={busy} />
 
       {/* Low balance notice banner */}
-      {balance !== undefined && balance < 0.02 && (
+      {typeof balance === "number" && balance < 0.02 && (
         <div className="p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-2xl text-xs text-amber-200 space-y-1">
           <div className="font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
             <span>Notice</span>

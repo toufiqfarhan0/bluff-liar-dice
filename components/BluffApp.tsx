@@ -1167,8 +1167,19 @@ export default function BluffApp() {
       const [hostText, idText] = joinCode.trim().split(":");
       if (!hostText || !idText) throw new Error("Invalid room code format. Expected host:roomId");
 
-      const host = new PublicKey(hostText);
-      const roomId = BigInt(idText);
+      let host: PublicKey;
+      try {
+        host = new PublicKey(hostText.trim());
+      } catch {
+        throw new Error("Invalid host address in room code.");
+      }
+
+      let roomId: bigint;
+      try {
+        roomId = BigInt(idText.trim());
+      } catch {
+        throw new Error("Invalid room ID in room code.");
+      }
 
       const data = await accountData(BASE_RPC, bluff.room(host, roomId));
       if (!data) throw new Error("No room found with that code.");
