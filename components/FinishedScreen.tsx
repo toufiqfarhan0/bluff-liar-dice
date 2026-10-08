@@ -55,14 +55,17 @@ export function FinishedScreen({
 
   const isSoloWinner = survivors.length === 1;
   const champion = survivors[0];
+  const isYouSurvivor = survivors.some((s) => s.address === you || (hasDicePlayers && s.isHuman));
   const isYou = champion ? (champion.address === you || (hasDicePlayers && champion.isHuman)) : false;
-  const youWon = youWonProp !== undefined ? youWonProp : isYou;
+  const youWon = youWonProp !== undefined ? youWonProp : (isSoloWinner ? isYou : isYouSurvivor);
 
-  const championName = champion
-    ? isYou
-      ? "You"
-      : champion.name || (nameOf?.(champion.address) ?? shortKey(champion.address))
-    : "Nobody";
+  const championName = isSoloWinner
+    ? champion
+      ? isYou
+        ? "You"
+        : champion.name || (nameOf?.(champion.address) ?? shortKey(champion.address))
+      : "Nobody"
+    : survivors.map((s) => (s.address === you || (hasDicePlayers && s.isHuman) ? "You" : s.name)).join(" & ");
 
   const displayPot =
     pot > 0
@@ -96,17 +99,25 @@ export function FinishedScreen({
             : "bg-[#171b14] border-[#2a3122]"
         }`}
       >
-        <span className="text-5xl select-none">{youWon ? "👑" : "🎲"}</span>
+        <span className="text-5xl select-none">
+          {isSoloWinner ? (youWon ? "👑" : "🎲") : youWon ? "🤝" : "🎲"}
+        </span>
 
         <h2
           className={`text-3xl font-black tracking-wide ${
             youWon ? "text-[#FBD53D]" : "text-[#f1f4ec]"
           }`}
         >
-          {youWon ? "BLUFF CHAMPION" : "Eliminated from Table"}
+          {isSoloWinner
+            ? youWon
+              ? "BLUFF CHAMPION"
+              : "Eliminated from Table"
+            : youWon
+            ? "POT SPLIT (CO-CHAMPION)"
+            : "Eliminated from Table"}
         </h2>
 
-        {champion && (
+        {isSoloWinner && champion && (
           <Avatar
             who={champion.address}
             name={championName}
@@ -116,13 +127,19 @@ export function FinishedScreen({
         )}
 
         <div className="inline-flex px-4 py-1.5 rounded-full bg-[#FBD53D] text-[#141004] text-xs font-black uppercase tracking-wider">
-          {isSoloWinner ? `${championName} Takes Entire Pot` : `${survivors.length} Survivors Split`}
+          {isSoloWinner
+            ? `${championName} Takes Entire Pot`
+            : `${survivors.length} Finalists Split Pot 50/50`}
         </div>
 
         <p className="text-xs text-[#98a08e] max-w-xs leading-relaxed">
-          {youWon
-            ? "You out-bluffed every opponent at the table! Last player standing with dice."
-            : `${championName} survived with the last remaining dice at the table.`}
+          {isSoloWinner
+            ? youWon
+              ? "You out-bluffed every opponent at the table! Last player standing with dice."
+              : `${championName} survived with the last remaining dice at the table.`
+            : youWon
+            ? `Heads-up tiebreak! Pot is split 50/50 between the ${survivors.length} surviving finalists.`
+            : `Table reached a tiebreak split between ${survivors.map((s) => s.name).join(" and ")}.`}
         </p>
       </div>
 
@@ -177,7 +194,9 @@ export function FinishedScreen({
         <div className="space-y-2">
           {standingsList.map((player) => {
             const isPlayerYou = player.address === you || player.isHuman;
-            const isWinner = isSoloWinner && player.address === champion?.address;
+            const isWinner = isSoloWinner
+              ? player.address === champion?.address
+              : player.isAlive;
 
             return (
               <div
@@ -206,7 +225,7 @@ export function FinishedScreen({
                   {isWinner ? (
                     <span className="inline-flex items-center gap-1 text-[11px] font-black text-[#FBD53D] uppercase">
                       <Trophy className="w-3.5 h-3.5" />
-                      <span>Winner</span>
+                      <span>{isSoloWinner ? "Winner" : "Co-Winner (50%)"}</span>
                     </span>
                   ) : player.isAlive ? (
                     <span className="text-[11px] font-bold text-[#a3e635]">Survivor</span>

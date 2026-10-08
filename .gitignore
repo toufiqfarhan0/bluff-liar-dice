@@ -39,3 +39,6 @@ Thumbs.db
 
 # Local properties
 local.properties
+
+# TypeScript Build Info
+*.tsbuildinfo

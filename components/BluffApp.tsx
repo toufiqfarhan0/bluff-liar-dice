@@ -83,6 +83,24 @@ interface RoomRef {
   roomId: bigint;
 }
 
+function parseRoomInput(input: string): string {
+  let raw = input.trim();
+  if (!raw) return "";
+  if (raw.includes("?room=")) {
+    try {
+      const urlObj = new URL(
+        raw,
+        typeof window !== "undefined" ? window.location.origin : "http://localhost",
+      );
+      return (urlObj.searchParams.get("room") || "").trim();
+    } catch {
+      const parts = raw.split("?room=");
+      if (parts[1]) return parts[1].split("&")[0].trim();
+    }
+  }
+  return raw;
+}
+
 export default function BluffApp() {
   const [wallet, setWallet] = useState<ConnectedWallet | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
@@ -424,8 +442,11 @@ export default function BluffApp() {
         const roundRollText = `Round ${nextRound} — fresh hands rolled.`;
         logActivity(roundRollText, "text-[#38bdf8]");
         addToast("info", `Round ${nextRound} started — fresh hands rolled!`);
-      } else if (msg.type === "GAME_OVER") {
+      } else if (msg.type === "GAME_OVER" || msg.type === "SPLIT_POT_AGREED") {
         setScreen("finished");
+        if (msg.type === "SPLIT_POT_AGREED") {
+          addToast("info", "Heads-up finalists agreed to split the pot 50/50!");
+        }
       } else if (msg.type === "TURN_TIMEOUT") {
         setTurnIndex(msg.nextTurnIndex);
         setTurnTimeLeft(20);
@@ -1034,6 +1055,17 @@ export default function BluffApp() {
     });
   };
 
+  const handleHeadsUpSplit = () => {
+    const survivors = dicePlayers.filter((p) => p.isAlive && p.diceCount > 0);
+    sendSyncEvent({
+      type: "SPLIT_POT_AGREED",
+      survivors,
+    });
+    setScreen("finished");
+    logActivity("Heads-up finalists agreed to split pot 50/50!", "text-[#FBD53D]");
+    addToast("success", "Heads-up tiebreak agreed! Pot split 50/50.");
+  };
+
   /* ------------------------------------------------------------- actions */
 
   const onAgain = () => {
@@ -1065,6 +1097,9 @@ export default function BluffApp() {
     setSettleSignature(null);
     setEndpoint({ url: BASE_RPC });
     setScreen("lobby");
+    if (typeof window !== "undefined") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   };
 
   const run = async (label: string, fn: () => Promise<void>) => {
@@ -1162,10 +1197,15 @@ export default function BluffApp() {
       addToast("success", "Room opened! Share code or seat bots to begin.");
     });
 
-  const onFind = () =>
-    run("Finding room on Devnet", async () => {
-      const [hostText, idText] = joinCode.trim().split(":");
-      if (!hostText || !idText) throw new Error("Invalid room code format. Expected host:roomId");
+  const resolveAndPreviewRoom = useCallback(
+    async (rawCode: string, autoSeatedCheck = true) => {
+      const cleaned = parseRoomInput(rawCode);
+      if (!cleaned) return;
+
+      const [hostText, idText] = cleaned.split(":");
+      if (!hostText || !idText) {
+        throw new Error("Invalid room code format. Expected host:roomId or invite link.");
+      }
 
       let host: PublicKey;
       try {
@@ -1181,16 +1221,102 @@ export default function BluffApp() {
         throw new Error("Invalid room ID in room code.");
       }
 
-      const data = await accountData(BASE_RPC, bluff.room(host, roomId));
+      const key = bluff.room(host, roomId);
+      const data = await accountData(BASE_RPC, key);
       if (!data) throw new Error("No room found with that code.");
 
       const found = bluff.decodeRoom(data);
-      if (found.phase !== Phase.Open) throw new Error("That room has already started.");
+
+      // Check if user is already seated in this room
+      const savedWallet = await restoreSavedWallet().catch(() => null);
+      const activeWalletAddr = wallet?.address || savedWallet?.address;
+
+      const isSeated =
+        activeWalletAddr &&
+        found.seats.some((s) => s.wallet.toBase58() === activeWalletAddr);
+
+      if (isSeated && autoSeatedCheck) {
+        const mine = await sessionFor(key.toBase58()).catch(() => null);
+        if (mine) setSession(mine);
+        setRef({ host, roomId });
+        setRoom(found);
+        const potAmount = await lamportsOf(BASE_RPC, bluff.vault(key)).catch(() => 0);
+        setPot(potAmount);
+
+        if (found.phase === Phase.Open) {
+          setScreen("waiting");
+        } else if (found.phase === Phase.Playing) {
+          const allPlayers = createDicePlayers(found);
+          setDicePlayers(allPlayers);
+          setScreen("playing");
+        } else {
+          setScreen("finished");
+        }
+        return;
+      }
+
+      if (found.phase !== Phase.Open) {
+        throw new Error("That room has already started or finished.");
+      }
 
       setPreview(found);
       setPending({ host, roomId });
       setVote(Ending.Split);
       setScreen("joining");
+    },
+    [wallet, createDicePlayers],
+  );
+
+  // Load room from URL search parameter (?room=...) on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const roomParam = params.get("room");
+    if (!roomParam) return;
+
+    run("Loading room from invite link", async () => {
+      await resolveAndPreviewRoom(roomParam, true);
+    }).catch(() => {
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    });
+  }, [resolveAndPreviewRoom]);
+
+  // Sync current room code to browser URL query param (?room=...)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (ref) {
+      const code = `${ref.host.toBase58()}:${ref.roomId}`;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("room") !== code) {
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}?room=${encodeURIComponent(code)}`,
+        );
+      }
+    } else if (screen === "joining" && pending) {
+      const code = `${pending.host.toBase58()}:${pending.roomId}`;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("room") !== code) {
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}?room=${encodeURIComponent(code)}`,
+        );
+      }
+    } else if (screen === "lobby") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("room")) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }
+  }, [ref, pending, screen]);
+
+  const onFind = () =>
+    run("Finding room on Devnet", async () => {
+      await resolveAndPreviewRoom(joinCode, false);
     });
 
   const onJoin = () =>
@@ -1578,7 +1704,14 @@ export default function BluffApp() {
             vote={vote}
             onVoteChange={setVote}
             onJoinRoom={onJoin}
-            onBack={() => setScreen("lobby")}
+            onBack={() => {
+              setPreview(null);
+              setPending(null);
+              setScreen("lobby");
+              if (typeof window !== "undefined") {
+                window.history.replaceState({}, "", window.location.pathname);
+              }
+            }}
             busy={!!busy}
             callsign={callsign}
             onCallsignChange={handleCallsignChange}
@@ -1599,7 +1732,7 @@ export default function BluffApp() {
             onLeave={onLeave}
             nameOf={nameOf}
             you={wallet?.address}
-            onCopyNotice={() => addToast("success", "Room code copied to clipboard!")}
+            onCopyNotice={(msg) => addToast("success", msg || "Copied to clipboard!")}
           />
         )}
 
@@ -1647,6 +1780,7 @@ export default function BluffApp() {
             onBid={(quantity, face) => handlePlaceBid(quantity, face)}
             onCallBluff={() => handleCallBluff()}
             onLeave={onAgain}
+            onSplitPot={handleHeadsUpSplit}
           />
         )}
 

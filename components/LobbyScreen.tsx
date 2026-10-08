@@ -80,7 +80,7 @@ export function LobbyScreen({
               type="text"
               value={joinCode}
               onChange={(e) => onChangeJoinCode(e.target.value)}
-              placeholder="Paste room code (e.g. host:12345)"
+              placeholder="Paste room code or invite link..."
               className="w-full bg-[#1f241a] border border-[#2a3122] focus:border-[#FBD53D] rounded-xl px-3.5 py-2 text-xs sm:text-sm text-[#f1f4ec] placeholder-[#6b7362] outline-none transition-colors"
             />
           </div>
