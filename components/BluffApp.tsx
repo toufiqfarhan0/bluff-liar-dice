@@ -206,12 +206,9 @@ export default function BluffApp() {
       if (key === wallet?.address) return callsign || "You";
       if (playerNames[key]) return playerNames[key];
       const bot = bots.find((b) => b.keypair.publicKey.toBase58() === key);
-      if (bot) return bot.name;
-      const hostKey = ref?.host.toBase58() || pending?.host.toBase58() || preview?.host?.toBase58();
-      if (key === hostKey) return playerNames[hostKey] || "Host";
-      return shortKey(key);
+      return bot ? bot.name : shortKey(key);
     },
-    [bots, wallet, callsign, playerNames, ref, pending, preview],
+    [bots, wallet, callsign, playerNames],
   );
 
   const createDicePlayers = useCallback(
@@ -290,13 +287,12 @@ export default function BluffApp() {
     (event: any) => {
       const payload = { ...event, _senderId: myTabId };
       broadcastRef.current?.postMessage(payload);
-      const target = ref || pending;
-      if (target) {
-        const tableId = `${target.host.toBase58()}_${target.roomId}`;
+      if (ref) {
+        const tableId = `${ref.host.toBase58()}_${ref.roomId}`;
         broadcastTableEvent(tableId, payload).catch(() => {});
       }
     },
-    [ref, pending, myTabId],
+    [ref, myTabId],
   );
 
   const applyIncomingEvent = useCallback(
@@ -329,21 +325,20 @@ export default function BluffApp() {
         addToast("success", "Game started! Round 1 is live!");
       } else if (msg.type === "REQUEST_SYNC") {
         const cur = gameStateRef.current;
-        sendSyncEvent({
-          type: "SYNC_STATE",
-          players: cur.dicePlayers,
-          round: currentRound,
-          currentBid: cur.currentBid,
-          turnIndex: cur.turnIndex,
-          turnTimeLeft: cur.turnTimeLeft,
-          lastActions: cur.lastActions,
-          screen: cur.screen,
-          showdown: cur.showdown,
-          playerNames: {
-            ...playerNames,
-            ...(wallet?.address && callsign ? { [wallet.address]: callsign } : {}),
-          },
-        });
+        if (cur.dicePlayers.length > 0) {
+          sendSyncEvent({
+            type: "SYNC_STATE",
+            players: cur.dicePlayers,
+            round: currentRound,
+            currentBid: cur.currentBid,
+            turnIndex: cur.turnIndex,
+            turnTimeLeft: cur.turnTimeLeft,
+            lastActions: cur.lastActions,
+            screen: cur.screen,
+            showdown: cur.showdown,
+            playerNames,
+          });
+        }
       } else if (msg.type === "SYNC_STATE") {
         if (msg.playerNames) {
           setPlayerNames((prev) => ({ ...prev, ...msg.playerNames }));
@@ -440,8 +435,7 @@ export default function BluffApp() {
   );
 
   useEffect(() => {
-    const activeTable = ref || pending;
-    if (!activeTable) {
+    if (!ref) {
       if (broadcastRef.current) {
         broadcastRef.current.close();
         broadcastRef.current = null;
@@ -449,7 +443,7 @@ export default function BluffApp() {
       return;
     }
 
-    const channelName = `bluff_table_${activeTable.host.toBase58()}_${activeTable.roomId}`;
+    const channelName = `bluff_table_${ref.host.toBase58()}_${ref.roomId}`;
     const channel = new BroadcastChannel(channelName);
     broadcastRef.current = channel;
 
@@ -457,7 +451,7 @@ export default function BluffApp() {
       applyIncomingEvent(event.data);
     };
 
-    const tableId = `${activeTable.host.toBase58()}_${activeTable.roomId}`;
+    const tableId = `${ref.host.toBase58()}_${ref.roomId}`;
 
     // Announce our callsign / name
     sendSyncEvent({
@@ -488,7 +482,7 @@ export default function BluffApp() {
       broadcastRef.current = null;
       clearInterval(pollInterval);
     };
-  }, [ref, pending, screen, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
+  }, [ref, screen, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
 
   useEffect(() => {
     if (!ref || !room) return;
@@ -1577,8 +1571,6 @@ export default function BluffApp() {
             busy={!!busy}
             callsign={callsign}
             onCallsignChange={handleCallsignChange}
-            nameOf={nameOf}
-            you={wallet?.address}
             balance={balance}
           />
         )}

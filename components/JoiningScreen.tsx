@@ -14,8 +14,6 @@ export function JoiningScreen({
   busy,
   callsign,
   onCallsignChange,
-  nameOf,
-  you,
   balance,
 }: {
   preview: RoomState;
@@ -26,8 +24,6 @@ export function JoiningScreen({
   busy: boolean;
   callsign: string;
   onCallsignChange: (name: string) => void;
-  nameOf?: (key: string) => string;
-  you?: string;
   balance?: number;
 }) {
   const stakeSol = (Number(preview.stake) / 1e9).toFixed(3);
@@ -73,7 +69,7 @@ export function JoiningScreen({
         <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
           WHO IS IN
         </span>
-        <Seats room={preview} you={you} nameOf={nameOf} />
+        <Seats room={preview} />
       </div>
 
       {/* Callsign / Player Name */}
