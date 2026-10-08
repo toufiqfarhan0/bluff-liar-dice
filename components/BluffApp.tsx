@@ -1200,6 +1200,7 @@ export default function BluffApp() {
       });
 
       setRef({ host, roomId });
+      await refreshBalance();
       setScreen("waiting");
       addToast("success", "You took a seat! Waiting for host to start.");
     });
@@ -1342,6 +1343,7 @@ export default function BluffApp() {
         time: Date.now(),
       });
       addToast("info", "Left room. Stake returned.");
+      await refreshBalance();
       onAgain();
     });
 
