@@ -13,10 +13,15 @@ import {
   sleep,
   submit,
 } from "./lib/chain";
-import { Ending, Bluff, Phase, type RoomState } from "./lib/bluff";
+import { Ending, Outcome, Bluff, Phase, type RoomState } from "./lib/bluff";
 import { explainChainError } from "./lib/errors";
 import { sessionFor } from "./lib/session";
-import { botMakeDecision, botThinkingDelay, botsFor, type Bot } from "./lib/bots";
+import {
+  botMakeDecision,
+  botThinkingDelay,
+  botsFor,
+  type Bot,
+} from "./lib/bots";
 import {
   Bid,
   DieFace,
@@ -36,9 +41,11 @@ import { WaitingScreen } from "./components/WaitingScreen";
 import { PlayingScreen } from "./components/PlayingScreen";
 import { ShowdownScreen } from "./components/ShowdownScreen";
 import { FinishedScreen } from "./components/FinishedScreen";
-import { FairnessModal } from "./components/FairnessModal";
+import { HelpModal, type HelpTab } from "./components/HelpModal";
 import { WalletModal } from "./components/WalletModal";
+import { broadcastTableEvent, pollTableEvents } from "./lib/relay";
 import { ToastContainer, type ToastMessage } from "./components/Toast";
+import { recordActivity } from "./lib/activity";
 import {
   ConnectedWallet,
   explainWalletError,
@@ -77,7 +84,14 @@ export default function App() {
   const [wallet, setWallet] = useState<ConnectedWallet | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [screen, setScreen] = useState<Screen>("lobby");
-  const [fairness, setFairness] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState<HelpTab>("rules");
+
+  const openHelp = (tab: HelpTab = "rules") => {
+    setHelpTab(tab);
+    setHelpOpen(true);
+  };
+
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [airdropping, setAirdropping] = useState(false);
 
@@ -99,18 +113,43 @@ export default function App() {
   const [answer, setAnswer] = useState("");
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // Callsign / Player Name state (persisted to localStorage)
+  const [callsign, setCallsign] = useState<string>(() => {
+    return localStorage.getItem("bluff.callsign") || "Player";
+  });
+  const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
+  const myTabId = useRef(Math.random().toString(36).slice(2)).current;
+  const lastPolledIdRef = useRef(0);
+  const advancingRoundRef = useRef(false);
+
+  const handleCallsignChange = (name: string) => {
+    setCallsign(name);
+    localStorage.setItem("bluff.callsign", name);
+    if (wallet?.address) {
+      setPlayerNames((prev) => ({ ...prev, [wallet.address]: name }));
+    }
+  };
+
   // Liar's Dice Gameplay States
   const [dicePlayers, setDicePlayers] = useState<PlayerDiceState[]>([]);
+  const [currentRound, setCurrentRound] = useState(1);
   const [currentBid, setCurrentBid] = useState<Bid | null>(null);
   const [turnIndex, setTurnIndex] = useState(0);
   const [turnTimeLeft, setTurnTimeLeft] = useState(20);
   const [showdown, setShowdown] = useState<ShowdownResult | null>(null);
-  const [showdownCountdown, setShowdownCountdown] = useState(8);
+  const [showdownCountdown, setShowdownCountdown] = useState(12);
   const [lastActions, setLastActions] = useState<Record<string, string>>({});
+  const [activityLog, setActivityLog] = useState<{ id: string; text: string; color?: string }[]>([]);
+
+  const logActivity = useCallback((text: string, color?: string) => {
+    const id = Math.random().toString(36).slice(2, 9);
+    setActivityLog((prev) => [{ id, text, color }, ...prev].slice(0, 50));
+  }, []);
 
   const shown = useRef(0);
   const closing = useRef(false);
   const botted = useRef(0);
+  const broadcastRef = useRef<BroadcastChannel | null>(null);
 
   const addToast = (type: "success" | "error" | "info", message: string) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -156,11 +195,37 @@ export default function App() {
 
   const nameOf = useCallback(
     (key: string) => {
-      if (key === wallet?.address) return "You";
+      if (key === wallet?.address) return callsign || "You";
+      if (playerNames[key]) return playerNames[key];
       const bot = bots.find((b) => b.keypair.publicKey.toBase58() === key);
       return bot ? bot.name : shortKey(key);
     },
-    [bots, wallet],
+    [bots, wallet, callsign, playerNames],
+  );
+
+  const createDicePlayers = useCallback(
+    (roomState: RoomState) => {
+      return roomState.seats.map((seat) => {
+        const addr = seat.wallet.toBase58();
+        const bot = bots.find((b) => b.keypair.publicKey.toBase58() === addr);
+        const isHuman = !bot;
+        const displayName = bot
+          ? bot.name
+          : addr === wallet?.address
+          ? (callsign || "Player")
+          : playerNames[addr] || shortKey(addr);
+
+        return {
+          address: addr,
+          name: displayName,
+          diceCount: INITIAL_DICE_COUNT,
+          hand: rollDice(INITIAL_DICE_COUNT),
+          isAlive: seat.alive,
+          isHuman,
+        };
+      });
+    },
+    [bots, wallet, callsign, playerNames],
   );
 
   /* ------------------------------------------------------------- room polling */
@@ -184,7 +249,223 @@ export default function App() {
     return () => clearInterval(id);
   }, [ref, refreshRoom]);
 
-  /* ------------------------------------------------- react to game state */
+  /* ------------------------------------------------- real-time sync & react to game state */
+
+  const gameStateRef = useRef({
+    dicePlayers,
+    currentBid,
+    turnIndex,
+    turnTimeLeft,
+    lastActions,
+    screen,
+    showdown,
+  });
+
+  useEffect(() => {
+    gameStateRef.current = {
+      dicePlayers,
+      currentBid,
+      turnIndex,
+      turnTimeLeft,
+      lastActions,
+      screen,
+      showdown,
+    };
+  }, [dicePlayers, currentBid, turnIndex, turnTimeLeft, lastActions, screen, showdown]);
+
+  const sendSyncEvent = useCallback(
+    (event: any) => {
+      const payload = { ...event, _senderId: myTabId };
+      broadcastRef.current?.postMessage(payload);
+      if (ref) {
+        const tableId = `${ref.host.toBase58()}_${ref.roomId}`;
+        broadcastTableEvent(tableId, payload).catch(() => {});
+      }
+    },
+    [ref, myTabId],
+  );
+
+  const applyIncomingEvent = useCallback(
+    (msg: any) => {
+      if (!msg || !msg.type) return;
+      if (msg._senderId === myTabId) return; // Prevent echoing self
+
+      if (msg.type === "SET_NAME") {
+        if (msg.address && msg.name) {
+          setPlayerNames((prev) => ({ ...prev, [msg.address]: msg.name }));
+          setDicePlayers((prev) =>
+            prev.map((p) => (p.address === msg.address ? { ...p, name: msg.name } : p)),
+          );
+        }
+      } else if (msg.type === "GAME_STARTED") {
+        if (msg.playerNames) {
+          setPlayerNames((prev) => ({ ...prev, ...msg.playerNames }));
+        }
+        setDicePlayers(msg.players);
+        setCurrentRound(1);
+        setCurrentBid(null);
+        setLastActions({});
+        setTurnIndex(msg.turnIndex ?? 0);
+        setTurnTimeLeft(20);
+        setScreen("playing");
+        setActivityLog([{
+          id: Math.random().toString(36).slice(2, 9),
+          text: `Round 1 — hands rolled for ${msg.players.length} players.`,
+        }]);
+        addToast("success", "Game started! Round 1 is live!");
+      } else if (msg.type === "REQUEST_SYNC") {
+        const cur = gameStateRef.current;
+        if (cur.dicePlayers.length > 0) {
+          sendSyncEvent({
+            type: "SYNC_STATE",
+            players: cur.dicePlayers,
+            round: currentRound,
+            currentBid: cur.currentBid,
+            turnIndex: cur.turnIndex,
+            turnTimeLeft: cur.turnTimeLeft,
+            lastActions: cur.lastActions,
+            screen: cur.screen,
+            showdown: cur.showdown,
+            playerNames,
+          });
+        }
+      } else if (msg.type === "SYNC_STATE") {
+        if (msg.playerNames) {
+          setPlayerNames((prev) => ({ ...prev, ...msg.playerNames }));
+        }
+        if (msg.round !== undefined) setCurrentRound(msg.round);
+        if (msg.players && msg.players.length > 0) {
+          setDicePlayers(msg.players);
+          if (msg.currentBid !== undefined) setCurrentBid(msg.currentBid);
+          if (msg.turnIndex !== undefined) setTurnIndex(msg.turnIndex);
+          if (msg.turnTimeLeft !== undefined) setTurnTimeLeft(msg.turnTimeLeft);
+          if (msg.lastActions) setLastActions(msg.lastActions);
+          if (msg.showdown) setShowdown(msg.showdown);
+          if (msg.screen && msg.screen !== "waiting") setScreen(msg.screen);
+        }
+      } else if (msg.type === "BID") {
+        setCurrentBid(msg.bid);
+        setLastActions((prev) => ({
+          ...prev,
+          [msg.bid.bidderAddress]: `Bid ${msg.bid.quantity} ${faceNamePlural(msg.bid.face)}`,
+        }));
+        setTurnIndex(msg.nextTurnIndex);
+        setTurnTimeLeft(20);
+        const isMe = msg.bid.bidderAddress === wallet?.address;
+        const bidder = isMe ? "You" : msg.bid.bidderName;
+        logActivity(`${bidder} bid ${msg.bid.quantity} × face ${msg.bid.face}.`);
+      } else if (msg.type === "CALL_BLUFF") {
+        setLastActions((prev) => ({
+          ...prev,
+          [msg.challengerAddress]: "Called BLUFF!",
+        }));
+        const isMe = msg.challengerAddress === wallet?.address;
+        const challenger = isMe ? "You" : msg.challengerName;
+        if (currentBid) {
+          logActivity(`${challenger} called the bluff on ${currentBid.quantity} × face ${currentBid.face}.`);
+        }
+        if (msg.showdown) {
+          const outcomeLabel = msg.showdown.wasBluff
+            ? "Bluff caught — bidder loses."
+            : "Bid was good — challenger loses.";
+          logActivity(outcomeLabel, "text-[#f2603c]");
+
+          const loserPlayer = dicePlayers.find((p) => p.address === msg.showdown.loserAddress);
+          const loserRemaining = Math.max(0, (loserPlayer?.diceCount ?? 1) - 1);
+          const loserName = msg.showdown.loserAddress === wallet?.address ? "You" : msg.showdown.loserName;
+          const loserText = `${loserName} lost a die — ${loserRemaining} left.`;
+          logActivity(loserText, "text-[#f2603c]");
+        }
+        setShowdown(msg.showdown);
+        if (msg.updatedPlayers) {
+          setDicePlayers(msg.updatedPlayers);
+        } else {
+          setDicePlayers((prev) =>
+            prev.map((p) => {
+              if (p.address === msg.showdown.loserAddress) {
+                const nextCount = Math.max(0, p.diceCount - 1);
+                return { ...p, diceCount: nextCount, isAlive: nextCount > 0 };
+              }
+              return p;
+            }),
+          );
+        }
+        setShowdownCountdown(12);
+        setScreen("reveal");
+      } else if (msg.type === "NEXT_ROUND") {
+        const nextRound = msg.round ?? (currentRound + 1);
+        setCurrentRound(nextRound);
+        const nextPlayers = msg.players ?? dicePlayers;
+        setDicePlayers(nextPlayers);
+        const survivors = nextPlayers.filter((p: any) => p.isAlive && (p.diceCount ?? 0) > 0);
+        if (survivors.length <= 1) {
+          setScreen("finished");
+          return;
+        }
+        setCurrentBid(null);
+        setLastActions({});
+        setTurnIndex(0);
+        setTurnTimeLeft(20);
+        setScreen("playing");
+        const roundRollText = `Round ${nextRound} — fresh hands rolled.`;
+        logActivity(roundRollText, "text-[#38bdf8]");
+        addToast("info", `Round ${nextRound} — fresh hands rolled!`);
+      } else if (msg.type === "GAME_OVER") {
+        setScreen("finished");
+      } else if (msg.type === "TURN_TIMEOUT") {
+        setTurnIndex(msg.nextTurnIndex);
+        setTurnTimeLeft(20);
+      }
+    },
+    [wallet, myTabId, sendSyncEvent, playerNames],
+  );
+
+  useEffect(() => {
+    if (!ref) {
+      if (broadcastRef.current) {
+        broadcastRef.current.close();
+        broadcastRef.current = null;
+      }
+      return;
+    }
+
+    const channelName = `bluff_table_${ref.host.toBase58()}_${ref.roomId}`;
+    const channel = new BroadcastChannel(channelName);
+    broadcastRef.current = channel;
+
+    channel.onmessage = (event) => {
+      applyIncomingEvent(event.data);
+    };
+
+    const tableId = `${ref.host.toBase58()}_${ref.roomId}`;
+
+    // Announce our callsign / name
+    sendSyncEvent({
+      type: "SET_NAME",
+      address: wallet?.address || "anon",
+      name: callsign || "Player",
+    });
+
+    // Request sync from existing peers
+    sendSyncEvent({ type: "REQUEST_SYNC" });
+
+    // HTTP relay polling for cross-browser synchronization
+    const pollInterval = setInterval(async () => {
+      try {
+        const events = await pollTableEvents(tableId, lastPolledIdRef.current);
+        for (const ev of events) {
+          lastPolledIdRef.current = Math.max(lastPolledIdRef.current, ev.id);
+          applyIncomingEvent(ev.data);
+        }
+      } catch {}
+    }, 350);
+
+    return () => {
+      channel.close();
+      broadcastRef.current = null;
+      clearInterval(pollInterval);
+    };
+  }, [ref, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
 
   useEffect(() => {
     if (!room) return;
@@ -201,13 +482,34 @@ export default function App() {
       return;
     }
 
-    if (screen === "reveal") return;
+    // Never interrupt the reveal showdown or finished victory screen
+    if (screen === "reveal" || screen === "finished") return;
+
     if (room.phase === Phase.Finished || room.phase === Phase.Settled) {
       setScreen("finished");
-    } else {
-      setScreen("playing");
+      return;
     }
-  }, [room, screen]);
+
+    // Check if Liar's Dice has already concluded
+    const aliveDicePlayers = dicePlayers.filter((p) => p.isAlive && p.diceCount > 0);
+    if (dicePlayers.length > 0 && aliveDicePlayers.length <= 1) {
+      setScreen("finished");
+      return;
+    }
+
+    if (room.phase === Phase.Playing) {
+      if (screen === "waiting" || screen === "opening" || screen === "joining") {
+        setScreen("playing");
+      }
+      setDicePlayers((prev) => {
+        if (prev.length === 0 && room.seats.length > 0) {
+          broadcastRef.current?.postMessage({ type: "REQUEST_SYNC" });
+          return createDicePlayers(room);
+        }
+        return prev;
+      });
+    }
+  }, [room, screen, dicePlayers, createDicePlayers]);
 
   // Turn countdown timer
   useEffect(() => {
@@ -217,7 +519,12 @@ export default function App() {
         if (prev <= 1) {
           const survivors = dicePlayers.filter((p) => p.isAlive);
           if (survivors.length > 0) {
-            setTurnIndex((t) => (t + 1) % survivors.length);
+            const nextTurn = (turnIndex + 1) % survivors.length;
+            setTurnIndex(nextTurn);
+            sendSyncEvent({
+              type: "TURN_TIMEOUT",
+              nextTurnIndex: nextTurn,
+            });
           }
           return 20;
         }
@@ -225,7 +532,7 @@ export default function App() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [screen, dicePlayers]);
+  }, [screen, dicePlayers, turnIndex, sendSyncEvent]);
 
   // Showdown auto-advance countdown
   useEffect(() => {
@@ -233,6 +540,7 @@ export default function App() {
     const interval = setInterval(() => {
       setShowdownCountdown((prev) => {
         if (prev <= 1) {
+          clearInterval(interval);
           handleNextRound();
           return 0;
         }
@@ -240,13 +548,13 @@ export default function App() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [screen, dicePlayers]);
+  }, [screen, dicePlayers, currentRound]);
 
   // Autonomous Bot Turns in Liar's Dice
   useEffect(() => {
     if (screen !== "playing" || dicePlayers.length === 0) return;
 
-    const survivors = dicePlayers.filter((p) => p.isAlive);
+    const survivors = dicePlayers.filter((p) => p.isAlive && p.diceCount > 0);
     if (survivors.length <= 1) {
       setScreen("finished");
       return;
@@ -287,14 +595,23 @@ export default function App() {
   ) => {
     const survivors = dicePlayers.filter((p) => p.isAlive);
     const bidderAddr = bidderAddress || wallet?.address || "you";
-    const bidderNm = bidderName || "You";
+    const playerObj = dicePlayers.find((p) => p.address === bidderAddr);
+    const canonicalName =
+      bidderName ||
+      (playerObj
+        ? playerObj.name
+        : bidderAddr === wallet?.address
+        ? (callsign || "You")
+        : shortKey(bidderAddr));
 
     const newBid: Bid = {
       quantity,
       face,
       bidderAddress: bidderAddr,
-      bidderName: bidderNm,
+      bidderName: canonicalName,
     };
+
+    const nextTurn = (turnIndex + 1) % Math.max(1, survivors.length);
 
     setCurrentBid(newBid);
     setLastActions((prev) => ({
@@ -302,25 +619,76 @@ export default function App() {
       [bidderAddr]: `Bid ${quantity} ${faceNamePlural(face)}`,
     }));
 
-    addToast("info", `${bidderNm} bid ${quantity} ${faceNamePlural(face)}`);
+    const isMe = bidderAddr === wallet?.address;
+    logActivity(`${isMe ? "You" : canonicalName} bid ${quantity} × face ${face}.`);
 
     // Advance turn
-    setTurnIndex((prev) => (prev + 1) % Math.max(1, survivors.length));
+    setTurnIndex(nextTurn);
     setTurnTimeLeft(20);
+
+    // Submit live bid transaction to MagicBlock TEE Rollup
+    if (endpoint?.url && endpoint.url !== BASE_RPC && ref) {
+      const bidderKeypair = isMe
+        ? session
+        : bots.find((b) => b.keypair.publicKey.toBase58() === bidderAddr)?.keypair;
+      if (bidderKeypair) {
+        sendLocal(
+          endpoint.url,
+          [bidderKeypair],
+          [
+            bluff.submitAnswer(
+              ref.host,
+              ref.roomId,
+              bidderKeypair.publicKey,
+              `bid:${quantity}:${face}`,
+            ),
+          ],
+          endpoint.token,
+        )
+          .then((txSig) => {
+            recordActivity({
+              signature: txSig,
+              network: "MagicBlock ER",
+              label: `${isMe ? "You" : canonicalName} raised bid (${quantity} × face ${face})`,
+              status: "confirmed",
+              time: Date.now(),
+            });
+          })
+          .catch((err) => {
+            console.warn("Rollup bid submission:", err);
+          });
+      }
+    }
+
+    // Sync across tabs & browsers
+    sendSyncEvent({
+      type: "BID",
+      bid: newBid,
+      nextTurnIndex: nextTurn,
+    });
   };
 
   const handleCallBluff = (challengerAddr?: string, challengerNm?: string) => {
     if (!currentBid) return;
 
     const chAddress = challengerAddr || wallet?.address || "you";
-    const chName = challengerNm || "You";
+    const playerObj = dicePlayers.find((p) => p.address === chAddress);
+    const chName =
+      challengerNm ||
+      (playerObj
+        ? playerObj.name
+        : chAddress === wallet?.address
+        ? (callsign || "You")
+        : shortKey(chAddress));
 
     setLastActions((prev) => ({
       ...prev,
       [chAddress]: "Called BLUFF!",
     }));
 
-    addToast("error", `${chName} called BLUFF! Showdown!`);
+    const isMe = chAddress === wallet?.address;
+    const challenger = isMe ? "You" : chName;
+    logActivity(`${challenger} called the bluff on ${currentBid.quantity} × face ${currentBid.face}.`, "text-[#f2603c]");
 
     const result = resolveBluff(
       currentBid,
@@ -328,48 +696,144 @@ export default function App() {
       dicePlayers,
     );
 
+    const outcomeLabel = result.wasBluff
+      ? "Bluff caught — bidder loses."
+      : "Bid was good — challenger loses.";
+    logActivity(outcomeLabel, "text-[#f2603c]");
+
+    const loser = dicePlayers.find((p) => p.address === result.loserAddress);
+    const loserRemaining = Math.max(0, (loser?.diceCount ?? 1) - 1);
+    const loserName = result.loserAddress === wallet?.address ? "You" : result.loserName;
+    const loserActionText = `${loserName} lost a die — ${loserRemaining} left.`;
+    logActivity(loserActionText, "text-[#f2603c]");
+
     setShowdown(result);
 
     // Subtract 1 die from loser
-    setDicePlayers((prev) =>
-      prev.map((p) => {
-        if (p.address === result.loserAddress) {
-          const nextCount = Math.max(0, p.diceCount - 1);
-          return {
-            ...p,
-            diceCount: nextCount,
-            isAlive: nextCount > 0,
-          };
-        }
-        return p;
-      }),
-    );
+    const updatedPlayers = dicePlayers.map((p) => {
+      if (p.address === result.loserAddress) {
+        const nextCount = Math.max(0, p.diceCount - 1);
+        return {
+          ...p,
+          diceCount: nextCount,
+          isAlive: nextCount > 0,
+        };
+      }
+      return p;
+    });
 
-    setShowdownCountdown(8);
+    setDicePlayers(updatedPlayers);
+    setShowdownCountdown(12);
     setScreen("reveal");
+
+    // Submit live bluff challenge transaction to MagicBlock TEE Rollup
+    if (endpoint?.url && endpoint.url !== BASE_RPC && ref) {
+      const callerKeypair = isMe
+        ? session
+        : bots.find((b) => b.keypair.publicKey.toBase58() === chAddress)?.keypair;
+      if (callerKeypair) {
+        sendLocal(
+          endpoint.url,
+          [callerKeypair],
+          [
+            bluff.submitAnswer(
+              ref.host,
+              ref.roomId,
+              callerKeypair.publicKey,
+              "bluff",
+            ),
+          ],
+          endpoint.token,
+        )
+          .then((txSig) => {
+            recordActivity({
+              signature: txSig,
+              network: "MagicBlock ER",
+              label: `${challenger} challenged bluff in TEE`,
+              status: "confirmed",
+              time: Date.now(),
+            });
+          })
+          .catch((err) => {
+            console.warn("Rollup bluff submission:", err);
+          });
+      }
+    }
+
+    // Sync across tabs & browsers
+    sendSyncEvent({
+      type: "CALL_BLUFF",
+      challengerAddress: chAddress,
+      challengerName: chName,
+      showdown: result,
+      updatedPlayers,
+    });
   };
 
   const handleNextRound = () => {
-    const survivors = dicePlayers.filter((p) => p.isAlive);
+    if (advancingRoundRef.current) return;
+    advancingRoundRef.current = true;
+    setTimeout(() => {
+      advancingRoundRef.current = false;
+    }, 1500);
+
+    const survivors = dicePlayers.filter((p) => p.isAlive && p.diceCount > 0);
 
     if (survivors.length <= 1) {
       setScreen("finished");
+      sendSyncEvent({
+        type: "GAME_OVER",
+        survivors,
+      });
       return;
     }
 
+    const nextRound = currentRound + 1;
+    setCurrentRound(nextRound);
+
     // Re-roll surviving players
-    setDicePlayers((prev) =>
-      prev.map((p) => ({
-        ...p,
-        hand: p.isAlive ? rollDice(p.diceCount) : [],
-      })),
-    );
+    const nextPlayers = dicePlayers.map((p) => ({
+      ...p,
+      hand: p.isAlive ? rollDice(p.diceCount) : [],
+    }));
+    setDicePlayers(nextPlayers);
 
     setCurrentBid(null);
     setLastActions({});
     setTurnIndex(0);
     setTurnTimeLeft(20);
     setScreen("playing");
+
+    const roundText = `Round ${nextRound} — fresh hands rolled.`;
+    logActivity(roundText, "text-[#38bdf8]");
+    addToast("info", `Round ${nextRound} started — fresh hands rolled!`);
+
+    // Submit round transition to MagicBlock TEE Rollup
+    if (endpoint?.url && endpoint.url !== BASE_RPC && ref && session) {
+      sendLocal(
+        endpoint.url,
+        [session],
+        [bluff.closeRound(ref.host, ref.roomId, session.publicKey, 1)],
+        endpoint.token,
+      )
+        .then((txSig) => {
+          recordActivity({
+            signature: txSig,
+            network: "MagicBlock ER",
+            label: `Round ${currentRound} closed in TEE`,
+            status: "confirmed",
+            time: Date.now(),
+          });
+        })
+        .catch(() => {});
+    }
+
+    // Sync across tabs & browsers
+    sendSyncEvent({
+      type: "NEXT_ROUND",
+      players: nextPlayers,
+      round: nextRound,
+    });
   };
 
   /* ------------------------------------------------------------- actions */
@@ -382,6 +846,8 @@ export default function App() {
     setPending(null);
     setBots([]);
     setDicePlayers([]);
+    setCurrentRound(1);
+    setActivityLog([]);
     setCurrentBid(null);
     setTurnIndex(0);
     setShowdown(null);
@@ -460,7 +926,7 @@ export default function App() {
       setSession(mine);
       setBots(crew);
 
-      await sendAsWallet([
+      const sig = await sendAsWallet([
         bluff.createRoom(host, roomId, STAKE, ROUND_SECONDS, mine.publicKey),
         bluff.joinRoom(host, roomId, host, mine.publicKey, vote),
         SystemProgram.transfer({
@@ -476,6 +942,14 @@ export default function App() {
           }),
         ),
       ]);
+
+      recordActivity({
+        signature: sig,
+        network: "Solana Devnet",
+        label: "Initialize Room & Deposit Pot",
+        status: "confirmed",
+        time: Date.now(),
+      });
 
       setRef({ host, roomId });
       setScreen("waiting");
@@ -513,7 +987,7 @@ export default function App() {
       const mine = await sessionFor(key.toBase58());
       setSession(mine);
 
-      await sendAsWallet([
+      const sig = await sendAsWallet([
         bluff.joinRoom(host, roomId, wallet.publicKey, mine.publicKey, vote),
         SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
@@ -521,6 +995,14 @@ export default function App() {
           lamports: Number(JOIN_FUEL),
         }),
       ]);
+
+      recordActivity({
+        signature: sig,
+        network: "Solana Devnet",
+        label: "Deposit Stake & Take Seat",
+        status: "confirmed",
+        time: Date.now(),
+      });
 
       setRef({ host, roomId });
       setScreen("waiting");
@@ -539,7 +1021,7 @@ export default function App() {
         );
         if (taken) continue;
 
-        await sendLocal(
+        const botJoinSig = await sendLocal(
           BASE_RPC,
           [bot.keypair],
           [
@@ -552,6 +1034,13 @@ export default function App() {
             ),
           ],
         );
+        recordActivity({
+          signature: botJoinSig,
+          network: "Solana Devnet",
+          label: `${bot.name} took seat`,
+          status: "confirmed",
+          time: Date.now(),
+        });
         await sleep(600);
       }
 
@@ -562,20 +1051,38 @@ export default function App() {
 
   const onStart = () =>
     run("Locking room on base layer", async () => {
+      if (!room || room.seats.length < 3) {
+        addToast("error", "At least 3 players are required to start. Seat bot players to play solo!");
+        throw new Error("At least 3 players are required to start.");
+      }
       const { host, roomId } = ref!;
-      await sendLocal(
+      const lockSig = await sendLocal(
         BASE_RPC,
         [session!],
         [bluff.lockRoom(host, roomId, session!.publicKey)],
       );
+      recordActivity({
+        signature: lockSig,
+        network: "Solana Devnet",
+        label: "Lock room on Solana Devnet",
+        status: "confirmed",
+        time: Date.now(),
+      });
       await sleep(2500);
 
       setBusy("Delegating room to MagicBlock TEE validator…");
-      await sendLocal(
+      const delSig = await sendLocal(
         BASE_RPC,
         [session!],
         [bluff.delegateRoom(host, roomId, session!.publicKey, TEE_VALIDATOR)],
       );
+      recordActivity({
+        signature: delSig,
+        network: "Solana Devnet",
+        label: "Delegate room to MagicBlock TEE",
+        status: "confirmed",
+        time: Date.now(),
+      });
       await sleep(4000);
 
       setBusy("Sealing answers in Private Rollup…");
@@ -587,47 +1094,57 @@ export default function App() {
       const token = await authenticate(url, session!);
       setEndpoint({ url, token });
 
-      await sendLocal(url, [session!], [bluff.sealRoom(host, roomId)], token);
+      const sealSig = await sendLocal(url, [session!], [bluff.sealRoom(host, roomId)], token);
+      recordActivity({
+        signature: sealSig,
+        network: "MagicBlock ER",
+        label: "Seal secret dice in Private TEE",
+        status: "confirmed",
+        time: Date.now(),
+      });
 
-      // Initialize secret dice for human player and all bots
-      const seatedBots = bots.filter((b) =>
-        room?.seats.some(
-          (s) => s.wallet.toBase58() === b.keypair.publicKey.toBase58(),
-        ) || true,
-      );
+      // Refresh room to ensure all seated players are present
+      const freshData = await accountData(url, key, token).catch(() => null);
+      const activeRoom = freshData ? bluff.decodeRoom(freshData) : room;
+      const targetRoom = activeRoom || room;
 
-      const allPlayers: PlayerDiceState[] = [
-        {
-          address: host.toBase58(),
-          name: "You",
-          diceCount: INITIAL_DICE_COUNT,
-          hand: rollDice(INITIAL_DICE_COUNT),
-          isAlive: true,
-          isHuman: true,
-        },
-        ...seatedBots.map((bot) => ({
-          address: bot.keypair.publicKey.toBase58(),
-          name: bot.name,
-          diceCount: INITIAL_DICE_COUNT,
-          hand: rollDice(INITIAL_DICE_COUNT),
-          isAlive: true,
-          isHuman: false,
-        })),
-      ];
+      if (!targetRoom) throw new Error("Could not load room state.");
+
+      const allPlayers = createDicePlayers(targetRoom);
 
       setDicePlayers(allPlayers);
+      setCurrentRound(1);
+      setActivityLog([{
+        id: Math.random().toString(36).slice(2, 9),
+        text: `Round 1 — hands rolled for ${allPlayers.length} players.`,
+      }]);
       setCurrentBid(null);
       setLastActions({});
       setTurnIndex(0);
       setTurnTimeLeft(20);
       setScreen("playing");
       addToast("success", "Game started! Round 1 is live!");
+
+      // Broadcast game start to all other players in the room
+      sendSyncEvent({
+        type: "GAME_STARTED",
+        players: allPlayers,
+        turnIndex: 0,
+        playerNames,
+      });
     });
 
   const onLeave = () =>
     run("Leaving and refunding stake", async () => {
       const { host, roomId } = ref!;
-      await sendAsWallet([bluff.leaveRoom(host, roomId, wallet!.publicKey)]);
+      const leaveSig = await sendAsWallet([bluff.leaveRoom(host, roomId, wallet!.publicKey)]);
+      recordActivity({
+        signature: leaveSig,
+        network: "Solana Devnet",
+        label: "Leave room & Refund stake",
+        status: "confirmed",
+        time: Date.now(),
+      });
       addToast("info", "Left room. Stake returned.");
       onAgain();
     });
@@ -637,12 +1154,19 @@ export default function App() {
       const { host, roomId } = ref!;
       if (room!.phase === Phase.Finished) {
         try {
-          await sendLocal(
+          const finishSig = await sendLocal(
             endpoint.url,
             [session!],
             [bluff.finishRoom(host, roomId, session!.publicKey)],
             endpoint.token,
           );
+          recordActivity({
+            signature: finishSig,
+            network: "MagicBlock ER",
+            label: "Undelegate room from MagicBlock TEE",
+            status: "confirmed",
+            time: Date.now(),
+          });
           await sleep(14000);
         } catch {
           // Handed back already
@@ -654,11 +1178,18 @@ export default function App() {
       const onBase = bluff.decodeRoom(data!);
       const winners = onBase.seats.filter((x: any) => x.alive).map((x: any) => x.wallet);
 
-      await sendLocal(
+      const settleSig = await sendLocal(
         BASE_RPC,
         [session!],
         [bluff.settle(host, roomId, session!.publicKey, winners)],
       );
+      recordActivity({
+        signature: settleSig,
+        network: "Solana Devnet",
+        label: "Settle pot & Payout winners",
+        status: "confirmed",
+        time: Date.now(),
+      });
       await refreshRoom();
       await refreshBalance();
       addToast("success", "Pot successfully paid out on Solana!");
@@ -688,13 +1219,18 @@ export default function App() {
           setBalance(null);
           onAgain();
         }}
-        onOpenFairness={() => setFairness(true)}
+        onOpenHelp={openHelp}
+        onOpenFairness={() => openHelp("fairness")}
         onGoHome={onAgain}
         onAirdrop={handleDevnetAirdrop}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col items-center justify-start p-4 sm:p-6 pb-12 w-full max-w-xl mx-auto">
+      <main
+        className={`flex-1 flex flex-col items-center justify-center p-4 sm:py-8 sm:px-6 w-full mx-auto my-auto transition-all ${
+          screen === "playing" || screen === "reveal" ? "max-w-6xl" : "max-w-xl"
+        }`}
+      >
         {/* Error notification bar */}
         {error && (
           <div className="w-full mb-4 p-4 rounded-2xl bg-[#f2603c]/15 border border-[#f2603c]/35 flex flex-col gap-1 text-left animate-in slide-in-from-top-2 duration-200">
@@ -729,7 +1265,7 @@ export default function App() {
               setVote(Ending.Split);
               setScreen("opening");
             }}
-            onOpenFairness={() => setFairness(true)}
+            onOpenFairness={() => openHelp("fairness")}
             busy={!!busy}
           />
         )}
@@ -742,6 +1278,8 @@ export default function App() {
             onBack={() => setScreen("lobby")}
             busy={!!busy}
             stake={STAKE}
+            callsign={callsign}
+            onCallsignChange={handleCallsignChange}
           />
         )}
 
@@ -753,6 +1291,8 @@ export default function App() {
             onJoinRoom={onJoin}
             onBack={() => setScreen("lobby")}
             busy={!!busy}
+            callsign={callsign}
+            onCallsignChange={handleCallsignChange}
           />
         )}
 
@@ -764,7 +1304,7 @@ export default function App() {
             isHost={wallet?.address === ref.host.toBase58()}
             busy={!!busy}
             unseatedBots={unseatedBots}
-            onAddBots={() => onAddBots(BOT_SEATS)}
+            onAddBots={onAddBots}
             onStart={onStart}
             onLeave={onLeave}
             nameOf={nameOf}
@@ -776,28 +1316,37 @@ export default function App() {
         {screen === "playing" && room && (
           <PlayingScreen
             room={room}
+            roomAddress={ref ? bluff.room(ref.host, ref.roomId).toBase58() : undefined}
+            round={currentRound}
+            erUrl={endpoint.url}
+            isDelegated={endpoint.url !== BASE_RPC}
             pot={pot}
-            myHand={dicePlayers.find((p) => p.isHuman)?.hand || []}
+            myHand={
+              dicePlayers.find((p) => p.address === wallet?.address)?.hand ||
+              dicePlayers.find((p) => p.isHuman)?.hand ||
+              []
+            }
             currentBid={currentBid}
             turnTimeLeft={turnTimeLeft}
             isMyTurn={
               dicePlayers.filter((p) => p.isAlive)[
                 turnIndex % Math.max(1, dicePlayers.filter((p) => p.isAlive).length)
-              ]?.isHuman ?? false
+              ]?.address === wallet?.address
             }
-            alive={dicePlayers.find((p) => p.isHuman)?.isAlive ?? true}
+            alive={dicePlayers.find((p) => p.address === wallet?.address)?.isAlive ?? true}
             busy={!!busy}
             seats={dicePlayers.map((p) => {
               const survivors = dicePlayers.filter((sp) => sp.isAlive);
               const isCurrentTurn =
                 p.isAlive &&
                 survivors[turnIndex % Math.max(1, survivors.length)]?.address === p.address;
+              const isYou = p.address === wallet?.address;
               return {
                 address: p.address,
                 name: p.name,
                 diceCount: p.diceCount,
                 isAlive: p.isAlive,
-                isYou: p.isHuman,
+                isYou: isYou,
                 isCurrentTurn,
                 lastAction: lastActions[p.address],
               };
@@ -817,16 +1366,17 @@ export default function App() {
             players={dicePlayers}
             onNextRound={handleNextRound}
             nextRoundCountdown={showdownCountdown}
+            you={wallet?.address}
           />
         )}
 
         {screen === "finished" && room && (
           <FinishedScreen
             room={room}
+            dicePlayers={dicePlayers}
             pot={pot}
             you={wallet?.address}
             nameOf={nameOf}
-            youWon={!!mySeat?.alive}
             settled={room.phase === Phase.Settled}
             busy={!!busy}
             onSettle={onSettle}
@@ -835,9 +1385,12 @@ export default function App() {
         )}
       </main>
 
-
-      {/* Fairness Explainer Modal */}
-      <FairnessModal open={fairness} onClose={() => setFairness(false)} />
+      {/* Game Guide, Rules & Fairness Modal */}
+      <HelpModal
+        open={helpOpen}
+        initialTab={helpTab}
+        onClose={() => setHelpOpen(false)}
+      />
 
       {/* Wallet Selector & Airdrop Modal */}
       <WalletModal
