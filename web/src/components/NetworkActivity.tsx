@@ -261,11 +261,13 @@ export function NetworkActivity({
                 </div>
 
                 <div className="flex items-center gap-1.5 font-mono text-[11px] text-[#7d8e72] group-hover/row:text-[#f1f4ec] shrink-0 ml-3">
-                  <code>{short(row.signature, 5)}</code>
                   {link ? (
-                    <ExternalLink className="w-3 h-3 text-[#5d6b53] group-hover/row:text-[#FBD53D]" />
+                    <>
+                      <code>{short(row.signature, 5)}</code>
+                      <ExternalLink className="w-3 h-3 text-[#5d6b53] group-hover/row:text-[#FBD53D]" />
+                    </>
                   ) : (
-                    <span className="text-[9px] bg-[#231b38] text-[#b9a9ff] font-bold px-2 py-0.5 rounded-full border border-[#b9a9ff]/30 uppercase tracking-wider">
+                    <span className="text-[10px] bg-[#231b38] text-[#b9a9ff] font-bold px-2.5 py-1 rounded-full border border-[#b9a9ff]/30 uppercase tracking-wider">
                       Private TEE
                     </span>
                   )}
