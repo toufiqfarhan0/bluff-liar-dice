@@ -2,7 +2,7 @@ import React from "react";
 import type { RoomState } from "../lib/bluff";
 import { Avatar, shortKey } from "./Avatar";
 import { Button } from "./Button";
-import { Award, CheckCircle2, RotateCcw, Trophy, Skull } from "lucide-react";
+import { Award, CheckCircle2, ExternalLink, RotateCcw, Trophy, Skull } from "lucide-react";
 
 export interface FinishedPlayer {
   address: string;
@@ -21,6 +21,7 @@ export function FinishedScreen({
   youWon: youWonProp,
   settled,
   busy,
+  settleSignature,
   onSettle,
   onAgain,
 }: {
@@ -32,6 +33,7 @@ export function FinishedScreen({
   youWon?: boolean;
   settled: boolean;
   busy: boolean;
+  settleSignature?: string | null;
   onSettle: () => void;
   onAgain: () => void;
 }) {
@@ -62,7 +64,13 @@ export function FinishedScreen({
       : champion.name || (nameOf?.(champion.address) ?? shortKey(champion.address))
     : "Nobody";
 
-  const share = isSoloWinner ? pot : (survivors.length ? pot / survivors.length : pot);
+  const displayPot =
+    pot > 0
+      ? pot
+      : room?.stake
+      ? Number(room.stake) * (room.seats?.length || 4)
+      : 40_000_000;
+  const share = isSoloWinner ? displayPot : survivors.length ? displayPot / survivors.length : displayPot;
 
   const standingsList = hasDicePlayers
     ? [...dicePlayers].sort((a, b) => b.diceCount - a.diceCount)
@@ -125,7 +133,7 @@ export function FinishedScreen({
         </span>
 
         <div className="text-4xl font-black text-[#FBD53D] tracking-wide">
-          ◎ {(pot / 1e9).toFixed(2)}
+          ◎ {(displayPot / 1e9).toFixed(2)}
         </div>
 
         <p className="text-xs text-[#f1f4ec] font-medium">
@@ -136,16 +144,29 @@ export function FinishedScreen({
             : `Split ${survivors.length} ways — ◎ ${(share / 1e9).toFixed(2)} each.`}
         </p>
 
-        <p className="text-[11px] text-[#6b7362]">
+        <div className="text-[11px] text-[#6b7362] flex flex-col items-center gap-1.5 pt-1">
           {settled ? (
-            <span className="inline-flex items-center gap-1 text-[#5fd39a]">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Transferred from Solana vault PDA directly to recipient wallet.</span>
-            </span>
+            <>
+              <span className="inline-flex items-center gap-1 text-[#5fd39a]">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Transferred from Solana vault PDA directly to recipient wallet.</span>
+              </span>
+              {settleSignature && (
+                <a
+                  href={`https://explorer.solana.com/tx/${settleSignature}?cluster=devnet`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FBD53D]/10 hover:bg-[#FBD53D]/20 border border-[#FBD53D]/30 text-[#FBD53D] font-mono text-[11px] font-bold transition-all mt-1"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>View Settlement on Solana Explorer ↗</span>
+                </a>
+              )}
+            </>
           ) : (
-            "Held in Solana Vault PDA until claimed by winner's session key."
+            <span>Held in Solana Vault PDA until claimed by winner's session key.</span>
           )}
-        </p>
+        </div>
       </div>
 
       {/* Final Table Standings */}

@@ -113,7 +113,7 @@ export function ShowdownScreen({
                 </div>
 
                 {/* Hand of Dice */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2 sm:gap-2.5">
                   {player.hand.length > 0 ? (
                     player.hand.map((d, idx) => {
                       const isMatch = d === bid.face;
