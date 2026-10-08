@@ -33,8 +33,10 @@ and this program checked.
 ## Layout
 
 ```
+app/               Next.js App Router (layout, page, API route handlers for table sync)
+components/        React components (live table, private dice tray, 3D dice, AI bots)
+lib/               Solana client SDK, TEE session keys, VRF & IDL decoders
 programs/bluff/    the Anchor program
-web/               the web app, with live table, 3D dice, and AI bots
 scripts/           IDL-driven client and test runs
 ```
 
@@ -42,9 +44,17 @@ scripts/           IDL-driven client and test runs
 
 ```bash
 anchor build && cargo test -p bluff   # 45 tests (16 unit + 29 integration)
-cd scripts && bun run session.ts         # the whole game, live on devnet
-cd web && bun run dev                 # the web app, at :5173
+cd scripts && bun run session.ts      # the whole game, live on devnet
+bun dev                               # Next.js web app, at http://localhost:3000
+bun run build                         # Next.js production build for Vercel
 ```
+
+## Deploying to Vercel
+
+The web application is built with **Next.js (App Router)** and structured at the repository root for seamless 1-click deployment on **Vercel**:
+1. Import this repository into Vercel.
+2. Vercel automatically detects Next.js.
+3. Deploy with zero configuration overrides.
 
 ## Testing and Invariant Verification
 

@@ -9,6 +9,8 @@ dist/
 web/dist/
 target/
 .anchor/
+.next/
+next-env.d.ts
 
 # Local Environment & Secrets
 .env

@@ -1,3 +1,6 @@
+'use client';
+
+import '@/lib/polyfills';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
@@ -12,16 +15,16 @@ import {
   sendLocal,
   sleep,
   submit,
-} from "./lib/chain";
-import { Ending, Outcome, Bluff, Phase, type RoomState } from "./lib/bluff";
-import { explainChainError } from "./lib/errors";
-import { sessionFor } from "./lib/session";
+} from "@/lib/chain";
+import { Ending, Outcome, Bluff, Phase, type RoomState } from "@/lib/bluff";
+import { explainChainError } from "@/lib/errors";
+import { sessionFor } from "@/lib/session";
 import {
   botMakeDecision,
   botThinkingDelay,
   botsFor,
   type Bot,
-} from "./lib/bots";
+} from "@/lib/bots";
 import {
   Bid,
   DieFace,
@@ -31,27 +34,27 @@ import {
   faceNamePlural,
   resolveBluff,
   rollDice,
-} from "./lib/dice";
-import { shortKey } from "./components/Avatar";
-import { Header } from "./components/Header";
-import { LobbyScreen } from "./components/LobbyScreen";
-import { OpeningScreen } from "./components/OpeningScreen";
-import { JoiningScreen } from "./components/JoiningScreen";
-import { WaitingScreen } from "./components/WaitingScreen";
-import { PlayingScreen } from "./components/PlayingScreen";
-import { ShowdownScreen } from "./components/ShowdownScreen";
-import { FinishedScreen } from "./components/FinishedScreen";
-import { HelpModal, type HelpTab } from "./components/HelpModal";
-import { WalletModal } from "./components/WalletModal";
-import { broadcastTableEvent, pollTableEvents } from "./lib/relay";
-import { ToastContainer, type ToastMessage } from "./components/Toast";
-import { recordActivity } from "./lib/activity";
+} from "@/lib/dice";
+import { shortKey } from "./Avatar";
+import { Header } from "./Header";
+import { LobbyScreen } from "./LobbyScreen";
+import { OpeningScreen } from "./OpeningScreen";
+import { JoiningScreen } from "./JoiningScreen";
+import { WaitingScreen } from "./WaitingScreen";
+import { PlayingScreen } from "./PlayingScreen";
+import { ShowdownScreen } from "./ShowdownScreen";
+import { FinishedScreen } from "./FinishedScreen";
+import { HelpModal, type HelpTab } from "./HelpModal";
+import { WalletModal } from "./WalletModal";
+import { broadcastTableEvent, pollTableEvents } from "@/lib/relay";
+import { ToastContainer, type ToastMessage } from "./Toast";
+import { recordActivity } from "@/lib/activity";
 import {
   ConnectedWallet,
   explainWalletError,
   restoreSavedWallet,
-} from "./lib/wallet";
-import idl from "./lib/idl.json";
+} from "@/lib/wallet";
+import idl from "@/lib/idl.json";
 import { Loader2 } from "lucide-react";
 
 const bluff = new Bluff(idl);
@@ -80,7 +83,7 @@ interface RoomRef {
   roomId: bigint;
 }
 
-export default function App() {
+export default function BluffApp() {
   const [wallet, setWallet] = useState<ConnectedWallet | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [screen, setScreen] = useState<Screen>("lobby");
@@ -116,6 +119,7 @@ export default function App() {
 
   // Callsign / Player Name state (persisted to localStorage)
   const [callsign, setCallsign] = useState<string>(() => {
+    if (typeof window === "undefined") return "Player";
     return localStorage.getItem("bluff.callsign") || "Player";
   });
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
@@ -126,7 +130,9 @@ export default function App() {
 
   const handleCallsignChange = (name: string) => {
     setCallsign(name);
-    localStorage.setItem("bluff.callsign", name);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bluff.callsign", name);
+    }
     if (wallet?.address) {
       setPlayerNames((prev) => ({ ...prev, [wallet.address]: name }));
     }
@@ -503,6 +509,7 @@ export default function App() {
 
     if (room.phase === Phase.Playing) {
       if (screen === "waiting" || screen === "joining") {
+        setError(null);
         setScreen("playing");
       }
       setDicePlayers((prev) => {
@@ -1256,7 +1263,7 @@ export default function App() {
         status: "confirmed",
         time: Date.now(),
       });
-      await sleep(2500);
+      await sleep(3500);
 
       setBusy("Delegating room to MagicBlock TEE validator…");
       const delSig = await sendLocal(
@@ -1310,6 +1317,7 @@ export default function App() {
       setLastActions({});
       setTurnIndex(0);
       setTurnTimeLeft(20);
+      setError(null);
       setScreen("playing");
       addToast("success", "Game started! Round 1 is live!");
 
@@ -1457,11 +1465,21 @@ export default function App() {
       >
         {/* Error notification bar */}
         {error && (
-          <div className="w-full mb-4 p-4 rounded-2xl bg-[#f2603c]/15 border border-[#f2603c]/35 flex flex-col gap-1 text-left animate-in slide-in-from-top-2 duration-200">
-            <span className="text-xs font-black uppercase tracking-wider text-[#f2603c]">
-              Notice
-            </span>
-            <span className="text-xs text-[#f1f4ec] leading-relaxed">{error}</span>
+          <div className="w-full mb-4 p-4 rounded-2xl bg-[#f2603c]/15 border border-[#f2603c]/35 flex items-start justify-between gap-3 text-left animate-in slide-in-from-top-2 duration-200">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-black uppercase tracking-wider text-[#f2603c]">
+                Notice
+              </span>
+              <span className="text-xs text-[#f1f4ec] leading-relaxed">{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-[#98a08e] hover:text-[#f1f4ec] p-1 text-sm transition-colors cursor-pointer"
+              title="Dismiss"
+            >
+              ✕
+            </button>
           </div>
         )}
 

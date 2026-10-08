@@ -98,10 +98,24 @@ export async function submit(
   signed: Uint8Array,
   token?: string,
 ): Promise<string> {
-  return rpc(withToken(url, token), "sendTransaction", [
-    toBase64(signed),
-    { encoding: "base64", preflightCommitment: "confirmed" },
-  ]);
+  let lastErr: any;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await rpc(withToken(url, token), "sendTransaction", [
+        toBase64(signed),
+        { encoding: "base64", skipPreflight: true, preflightCommitment: "confirmed" },
+      ]);
+    } catch (e: any) {
+      lastErr = e;
+      const msg = e?.message || String(e);
+      if (attempt < 3 && /transient|simulation|blockhash|rate|timeout/i.test(msg)) {
+        await sleep(1000 * attempt);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
 }
 
 /**
