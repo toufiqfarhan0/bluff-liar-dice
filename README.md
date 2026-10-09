@@ -13,6 +13,12 @@ nothing else can do.
   <img src="public/bluff-table-animation.gif" alt="Bluff Liar's Dice Live Match Table Animation" width="480" />
 </p>
 
+<p align="center">
+  <a href="https://bluff-liar-dice-tawny.vercel.app"><b>🎮 Live Web App</b></a> &nbsp;•&nbsp;
+  <a href="./bluff.pdf"><b>📑 Architecture & Engineering Deck (PDF)</b></a> &nbsp;•&nbsp;
+  <a href="https://explorer.solana.com/address/DtPSuiwYsauE5PwRWZfYpu2ZeCxZ7iunSZhXvHFWWfx7?cluster=devnet"><b>🔍 Solana Devnet Explorer</b></a>
+</p>
+
 ## Why it needs a rollup
 
 **The dice are sealed.** They live in an account delegated to a Private ER whose
@@ -152,4 +158,7 @@ cargo test -p bluff
 3. **Core Instruction Logic (`src/instructions/` - 16 unit tests)**
    - Verifies round resolution, tiebreaks, queue arithmetic, and ephemeral delegate layout offsets.
 
-`ARCHITECTURE.md` records what was proven before any of this was written.
+## Documentation & Presentation Deck
+
+- **Architecture & Engineering Slide Deck**: [`bluff.pdf`](./bluff.pdf) (or view online at [`bluff-liar-dice-tawny.vercel.app/bluff.pdf`](https://bluff-liar-dice-tawny.vercel.app/bluff.pdf)).
+- **Architecture Validation Log**: [`ARCHITECTURE.md`](ARCHITECTURE.md) records what was proven before any of this was written.
