@@ -1607,7 +1607,7 @@ export default function BluffApp() {
         className={`flex-1 flex flex-col items-center justify-center p-4 sm:py-8 sm:px-6 w-full mx-auto my-auto transition-all ${
           screen === "lobby"
             ? "max-w-7xl"
-            : screen === "playing" || screen === "reveal" || screen === "waiting"
+            : screen === "playing" || screen === "reveal" || screen === "waiting" || screen === "finished"
             ? "max-w-6xl"
             : "max-w-xl"
         }`}
