@@ -89,7 +89,7 @@ export function PlayingScreen({
       {/* Side-by-side Layout on md/lg screens, stacked on small mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
         {/* Left: The Felt Table Arena Stage & Current Bid Card */}
-        <div className="lg:col-span-7 flex flex-col space-y-3 w-full">
+        <div className="lg:col-span-8 flex flex-col space-y-3 w-full">
           {/* Current Bid Display matching reference */}
           <div className="p-4 rounded-2xl bg-[#12160e] border border-[#232b1a] shadow-lg flex items-center justify-between">
             <div>
@@ -120,7 +120,7 @@ export function PlayingScreen({
           </div>
 
           {/* The Felt Table Arena Stage (Grand, Spacious & High-res) */}
-          <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-3xl bg-[#0f140d]/90 border border-[#232b1a] shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_0_60px_rgba(15,25,10,0.5)] min-h-[440px] sm:min-h-[490px] lg:min-h-[520px] w-full relative">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-3 rounded-3xl bg-[#0f140d]/90 border border-[#232b1a] shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_0_60px_rgba(15,25,10,0.5)] min-h-[440px] sm:min-h-[500px] lg:min-h-[560px] w-full relative">
             <BluffTable
               seats={seats}
               currentBid={currentBid}
@@ -132,7 +132,7 @@ export function PlayingScreen({
         </div>
 
         {/* Right: Dice Tray, Turn Action Controls & Table activity (Side Panel) */}
-        <div className="lg:col-span-5 flex flex-col space-y-4 w-full">
+        <div className="lg:col-span-4 flex flex-col space-y-4 w-full">
           {/* Your Private Dice Tray (Decrypted from TEE) */}
           {alive ? (
             <DiceTray

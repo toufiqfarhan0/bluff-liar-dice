@@ -9,6 +9,10 @@ all cups lift. Someone loses a die. Last one standing with dice takes the pot.
 Built for the Solana Blitz v9 Hackathon, with MagicBlock doing three jobs that
 nothing else can do.
 
+<p align="center">
+  <img src="public/bluff-table-animation.gif" alt="Bluff Liar's Dice Live Match Table Animation" width="480" />
+</p>
+
 ## Why it needs a rollup
 
 **The dice are sealed.** They live in an account delegated to a Private ER whose
@@ -29,6 +33,65 @@ fees.
 delegated. The rollup runs the table rounds and decides who won; it cannot pay
 anybody. Settlement happens on the base layer from state the rollup committed back
 and this program checked.
+
+## Game Rules & Mechanics
+
+Bluff is an on-chain, high-stakes game of **Liar's Dice** powered by MagicBlock Private Ephemeral Rollups and Solana.
+
+### 1. Objective
+Be the last player standing with dice under your cup to win the accumulated SOL pot.
+
+### 2. Table Setup & Buy-in
+* **3 to 6 Players**: Tables support between 3 and 6 seated players. Solo hosts can seat AI bot players (with distinct archetypes: Conservative, Bluffer, Skeptic) to play anytime.
+* **Equal Stakes**: Each player deposits an entry fee (e.g., 0.01 SOL) into the non-delegated Solana Vault PDA. The total pot equals `Stake × Player Count`.
+* **5 Dice per Player**: Every player starts with 5 six-sided dice (faces ⚀ through ⚅).
+* **Hardware-Encrypted Rolls**: At the start of each round, dice are rolled inside a **MagicBlock Private TEE (Hardware Enclave)**. Only you can view the dice under your private cup; opponents and observers cannot inspect or front-run them.
+
+### 3. Bidding & Raising Rules
+Players take turns clockwise making public claims about the **total quantity of a specific die face** present across the entire table (all cups combined):
+* **Initial Bid**: The first player states a quantity and face (e.g., *"Three 4s"*).
+* **Escalating Bids**: Any subsequent bid must strictly escalate:
+  * **Increase the quantity** with any face (e.g., *"Four 2s"* beats *"Three 5s"*).
+  * **Increase the face** with the same quantity (e.g., *"Three 5s"* beats *"Three 4s"*).
+* **Exact Face Matching**: Dice counts match the exact face bid (faces 1 through 6).
+* **No Passing**: In Liar's Dice, checking, skipping, or passing a turn is strictly forbidden.
+
+### 4. 20-Second Turn Clock & Anti-AFK Penalty
+* On your turn, you have exactly **20 seconds** to either place a higher bid or call "Bluff!".
+* **Anti-AFK Protection**: If a player's turn clock expires at 0 seconds, they **immediately forfeit 1 die** for inactivity. An idling player loses a die every round and is eliminated within 5 rounds, preventing stalled games or freeloading.
+
+### 5. Showdown & Calling "Bluff!"
+Instead of raising, any player can challenge the previous bid on their turn by calling **"Bluff!"**:
+1. **Cups Lift Simultaneously**: The TEE enclaves decrypt all player hands and reveal every die on the table.
+2. **Count Matching Dice**: The total number of dice matching the bid face is tallied.
+3. **Die Deduction**:
+   * **If the bid was true** (actual matching dice $\ge$ bid quantity): The bid was legitimate. The **challenger loses 1 die**.
+   * **If the bid was a bluff** (actual matching dice $<$ bid quantity): The bidder was caught lying. The **bidder loses 1 die**.
+4. **Elimination**: When a player loses all 5 dice, they are eliminated from the table. Surviving players re-roll their remaining dice for the next round.
+
+### 6. Pot Settlement & Heads-Up Tiebreak
+* **Solo Champion (100% of the Pot)**: If you eliminate all opponents and are the last player standing with dice, you win 100% of the table pot.
+* **Heads-Up Final 2 Tiebreak**: When the table is down to the final 2 finalists, the door vote tallied during room creation decides how a tiebreak is resolved:
+  * **Split Pot (50/50)**: The two surviving finalists share the pot equally.
+  * **Winner Takes All**: An on-chain VRF coin flip picks 1 sole winner for 100%.
+  * *(A tie in table votes always defaults to Split Pot).*
+* **On-Chain Payout (`settle`)**: Clicking **"CLAIM POT"** calls the `settle` instruction on Solana Devnet. The smart contract validates verified survivors and transfers SOL lamports directly from the Vault PDA to the winner's wallet.
+
+---
+
+## How to Play (Step-by-Step)
+
+1. **Connect Your Wallet**: Click **"Connect Wallet"** in the top navigation. Bluff supports Phantom, Solflare, browser wallets, or temporary local devnet keypairs. Use the **"+1 SOL"** airdrop button to fund your devnet wallet.
+2. **Open or Join a Table**:
+   * **Host a Table**: Click **"PLAY NOW"** $\rightarrow$ choose your tiebreak preference (Split Pot vs Winner Takes All) $\rightarrow$ click **"Open it"**. You can seat AI bots or share your 1-click invite link with friends.
+   * **Join a Table**: Paste a room code or open an invite link (`?room=host:roomId`) $\rightarrow$ review table details $\rightarrow$ click **"Take the seat"**.
+3. **Launch the Game**: When 3 or more players are seated, the host clicks **"Start Game"**. The room is locked, delegated to the MagicBlock TEE validator, and dice are sealed.
+4. **Play Your Turns**:
+   * Inspect your secret dice in the private tray.
+   * Watch the table's current highest bid and turn indicator.
+   * When it's your turn, use the **Bid Controls** to raise the quantity/face, or click **"CALL BLUFF!"** if you believe the claim is impossible.
+5. **Showdown & Round Progression**: View the cups lift on the showdown screen. Watch opponents lose dice until only the champion remains.
+6. **Claim Your Winnings**: When the game concludes, click **"CLAIM POT"** to transfer your SOL prize directly into your wallet.
 
 ## Layout
 

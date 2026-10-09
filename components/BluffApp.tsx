@@ -135,26 +135,11 @@ export default function BluffApp() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [settleSignature, setSettleSignature] = useState<string | null>(null);
 
-  // Callsign / Player Name state (persisted to localStorage)
-  const [callsign, setCallsign] = useState<string>(() => {
-    if (typeof window === "undefined") return "Player";
-    return localStorage.getItem("bluff.callsign") || "Player";
-  });
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
   const myTabId = useRef(Math.random().toString(36).slice(2)).current;
   const lastPolledIdRef = useRef(0);
   const advancingRoundRef = useRef(false);
   const activeSessionIdRef = useRef(0);
-
-  const handleCallsignChange = (name: string) => {
-    setCallsign(name);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("bluff.callsign", name);
-    }
-    if (wallet?.address) {
-      setPlayerNames((prev) => ({ ...prev, [wallet.address]: name }));
-    }
-  };
 
   // Liar's Dice Gameplay States
   const [dicePlayers, setDicePlayers] = useState<PlayerDiceState[]>([]);
@@ -221,12 +206,12 @@ export default function BluffApp() {
 
   const nameOf = useCallback(
     (key: string) => {
-      if (key === wallet?.address) return callsign || "You";
+      if (key === wallet?.address) return "You";
       if (playerNames[key]) return playerNames[key];
       const bot = bots.find((b) => b.keypair.publicKey.toBase58() === key);
       return bot ? bot.name : shortKey(key);
     },
-    [bots, wallet, callsign, playerNames],
+    [bots, wallet, playerNames],
   );
 
   const createDicePlayers = useCallback(
@@ -238,7 +223,7 @@ export default function BluffApp() {
         const displayName = bot
           ? bot.name
           : addr === wallet?.address
-          ? (callsign || "Player")
+          ? "You"
           : playerNames[addr] || shortKey(addr);
 
         return {
@@ -251,7 +236,7 @@ export default function BluffApp() {
         };
       });
     },
-    [bots, wallet, callsign, playerNames],
+    [bots, wallet, playerNames],
   );
 
   /* ------------------------------------------------------------- room polling */
@@ -474,13 +459,6 @@ export default function BluffApp() {
 
     const tableId = `${ref.host.toBase58()}_${ref.roomId}`;
 
-    // Announce our callsign / name
-    sendSyncEvent({
-      type: "SET_NAME",
-      address: wallet?.address || "anon",
-      name: callsign || "Player",
-    });
-
     // Request sync from existing peers
     sendSyncEvent({ type: "REQUEST_SYNC" });
 
@@ -503,7 +481,7 @@ export default function BluffApp() {
       broadcastRef.current = null;
       clearInterval(pollInterval);
     };
-  }, [ref, screen, wallet, callsign, applyIncomingEvent, sendSyncEvent]);
+  }, [ref, screen, wallet, applyIncomingEvent, sendSyncEvent]);
 
   useEffect(() => {
     if (!ref || !room) return;
@@ -627,7 +605,7 @@ export default function BluffApp() {
       (playerObj
         ? playerObj.name
         : bidderAddr === wallet?.address
-        ? (callsign || "You")
+        ? "You"
         : shortKey(bidderAddr));
 
     const newBid: Bid = {
@@ -727,7 +705,7 @@ export default function BluffApp() {
       (playerObj
         ? playerObj.name
         : chAddress === wallet?.address
-        ? (callsign || "You")
+        ? "You"
         : shortKey(chAddress));
 
     setLastActions((prev) => ({
@@ -1357,13 +1335,6 @@ export default function BluffApp() {
         time: Date.now(),
       });
 
-      // Announce callsign to peers
-      sendSyncEvent({
-        type: "SET_NAME",
-        address: wallet.address,
-        name: callsign || "Player",
-      });
-
       await sleep(1500);
       const data = await accountData(BASE_RPC, key);
       if (data) {
@@ -1628,12 +1599,17 @@ export default function BluffApp() {
         onOpenFairness={() => openHelp("fairness")}
         onGoHome={onAgain}
         onAirdrop={handleDevnetAirdrop}
+        airdropping={airdropping}
       />
 
       {/* Main Content Area */}
       <main
         className={`flex-1 flex flex-col items-center justify-center p-4 sm:py-8 sm:px-6 w-full mx-auto my-auto transition-all ${
-          screen === "playing" || screen === "reveal" ? "max-w-6xl" : "max-w-xl"
+          screen === "lobby"
+            ? "max-w-7xl"
+            : screen === "playing" || screen === "reveal" || screen === "waiting"
+            ? "max-w-6xl"
+            : "max-w-xl"
         }`}
       >
         {/* Error notification bar */}
@@ -1693,8 +1669,6 @@ export default function BluffApp() {
             onBack={() => setScreen("lobby")}
             busy={!!busy}
             stake={STAKE}
-            callsign={callsign}
-            onCallsignChange={handleCallsignChange}
           />
         )}
 
@@ -1713,8 +1687,6 @@ export default function BluffApp() {
               }
             }}
             busy={!!busy}
-            callsign={callsign}
-            onCallsignChange={handleCallsignChange}
             balance={balance}
           />
         )}

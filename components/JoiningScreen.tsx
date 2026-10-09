@@ -12,8 +12,6 @@ export function JoiningScreen({
   onJoinRoom,
   onBack,
   busy,
-  callsign,
-  onCallsignChange,
   balance,
 }: {
   preview: RoomState;
@@ -22,8 +20,6 @@ export function JoiningScreen({
   onJoinRoom: () => void;
   onBack: () => void;
   busy: boolean;
-  callsign: string;
-  onCallsignChange: (name: string) => void;
   balance?: number | null;
 }) {
   const stakeSol = (Number(preview.stake) / 1e9).toFixed(3);
@@ -70,22 +66,6 @@ export function JoiningScreen({
           WHO IS IN
         </span>
         <Seats room={preview} />
-      </div>
-
-      {/* Callsign / Player Name */}
-      <div className="space-y-1.5 p-4 bg-[#171b14] border border-[#2a3122] rounded-2xl">
-        <label className="text-[10px] font-extrabold uppercase tracking-widest text-[#6b7362] block">
-          YOUR CALLSIGN
-        </label>
-        <input
-          type="text"
-          value={callsign}
-          onChange={(e) => onCallsignChange(e.target.value)}
-          maxLength={16}
-          placeholder="Enter player name (e.g. Farhan)"
-          disabled={busy}
-          className="w-full bg-[#1f241a] border border-[#2a3122] focus:border-[#FBD53D] rounded-xl px-4 py-2.5 text-sm text-[#f1f4ec] placeholder-[#6b7362] outline-none transition-colors"
-        />
       </div>
 
       <EndingTally room={preview} />

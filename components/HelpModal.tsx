@@ -95,43 +95,43 @@ export function HelpModal({
           Everything you need to know about playing Bluff and cryptographic fairness on Solana.
         </p>
 
-        {/* Tab Navigation */}
-        <nav className="flex items-center gap-1.5 p-1 bg-[#171b14] border border-[#2a3122] rounded-2xl mb-4 select-none">
+        {/* Tab Navigation (Pixel-perfect Segmented Bar) */}
+        <nav className="grid grid-cols-3 gap-1.5 p-1.5 bg-[#141810] border border-[#26311e] rounded-2xl mb-4 select-none">
           <button
             type="button"
             onClick={() => setTab("rules")}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`w-full py-2 px-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               tab === "rules"
-                ? "bg-[#201d10] text-[#FBD53D] shadow-[0_0_12px_rgba(251,213,61,0.25)] border border-[#FBD53D]/30"
-                : "text-[#98a08e] hover:text-[#f1f4ec]"
+                ? "bg-[#232011] text-[#FBD53D] shadow-[0_0_12px_rgba(251,213,61,0.2)] border border-[#FBD53D]/40"
+                : "text-[#98a08e] hover:text-[#f1f4ec] hover:bg-[#1b2216]/60 border border-transparent"
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" />
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
             <span>Rules</span>
           </button>
           <button
             type="button"
             onClick={() => setTab("tutorial")}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`w-full py-2 px-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               tab === "tutorial"
-                ? "bg-[#201d10] text-[#FBD53D] shadow-[0_0_12px_rgba(251,213,61,0.25)] border border-[#FBD53D]/30"
-                : "text-[#98a08e] hover:text-[#f1f4ec]"
+                ? "bg-[#232011] text-[#FBD53D] shadow-[0_0_12px_rgba(251,213,61,0.2)] border border-[#FBD53D]/40"
+                : "text-[#98a08e] hover:text-[#f1f4ec] hover:bg-[#1b2216]/60 border border-transparent"
             }`}
           >
-            <Dices className="w-3.5 h-3.5" />
+            <Dices className="w-3.5 h-3.5 shrink-0" />
             <span>How to Play</span>
           </button>
           <button
             type="button"
             onClick={() => setTab("fairness")}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`w-full py-2 px-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               tab === "fairness"
-                ? "bg-[#201d10] text-[#FBD53D] shadow-[0_0_12px_rgba(251,213,61,0.25)] border border-[#FBD53D]/30"
-                : "text-[#98a08e] hover:text-[#f1f4ec]"
+                ? "bg-[#232011] text-[#FBD53D] shadow-[0_0_12px_rgba(251,213,61,0.2)] border border-[#FBD53D]/40"
+                : "text-[#98a08e] hover:text-[#f1f4ec] hover:bg-[#1b2216]/60 border border-transparent"
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Fairness & TEE</span>
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+            <span>How privacy works</span>
           </button>
         </nav>
 

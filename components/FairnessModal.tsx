@@ -123,11 +123,11 @@ export function GuardBar({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-[#171b14] border border-[#2a3122] hover:border-[#FBD53D]/40 hover:bg-[#1c2219] transition-all cursor-pointer group text-xs font-bold"
+      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full hover:bg-[#141910] transition-all cursor-pointer group text-xs text-[#828c77]"
     >
-      <ShieldCheck className="w-4 h-4 text-[#98a08e] group-hover:text-[#FBD53D] transition-colors" />
-      <span className="text-[#98a08e]">Protected by MagicBlock Private TEE</span>
-      <span className="text-[#FBD53D] font-extrabold underline underline-offset-2">Why?</span>
+      <ShieldCheck className="w-3.5 h-3.5 text-[#5fd39a] group-hover:text-[#FBD53D] transition-colors shrink-0" />
+      <span>Protected by MagicBlock Private TEE ·</span>
+      <span className="text-[#FBD53D] font-bold group-hover:underline">How it works</span>
     </button>
   );
 }

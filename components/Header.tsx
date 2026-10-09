@@ -2,7 +2,7 @@ import React from "react";
 import { ConnectedWallet } from "../lib/wallet";
 import { Wordmark } from "./Wordmark";
 import { shortKey } from "./Avatar";
-import { Flame, HelpCircle, LogOut, Wallet } from "lucide-react";
+import { Flame, Loader2, LogOut, Wallet } from "lucide-react";
 
 export function Header({
   wallet,
@@ -13,15 +13,17 @@ export function Header({
   onOpenHelp,
   onGoHome,
   onAirdrop,
+  airdropping,
 }: {
   wallet: ConnectedWallet | null;
   balance: number | null;
   onOpenWallet: () => void;
   onDisconnect: () => void;
-  onOpenFairness: () => void;
+  onOpenFairness?: () => void;
   onOpenHelp?: (tab?: "rules" | "tutorial" | "fairness") => void;
   onGoHome: () => void;
   onAirdrop?: () => void;
+  airdropping?: boolean;
 }) {
   return (
     <header className="w-full flex items-center justify-between py-2.5 sm:py-3 px-4 sm:px-6 border-b border-[#2a3122]/50 bg-[#0c0f0b]/80 backdrop-blur-md sticky top-0 z-40">
@@ -33,13 +35,12 @@ export function Header({
           <Wordmark small />
         </button>
 
-        {/* Dedicated Help Button */}
+        {/* Dedicated Help Button without question mark icon */}
         <button
           type="button"
-          onClick={() => onOpenHelp ? onOpenHelp("rules") : onOpenFairness()}
-          className="flex items-center gap-1.5 text-xs font-bold text-[#FBD53D] bg-[#201d10]/70 border border-[#FBD53D]/60 hover:border-[#FBD53D] hover:bg-[#FBD53D]/15 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-[0_0_12px_-2px_rgba(251,213,61,0.25)]"
+          onClick={() => onOpenHelp ? onOpenHelp("rules") : onOpenFairness?.()}
+          className="flex items-center text-xs font-bold text-[#FBD53D] bg-[#201d10]/70 border border-[#FBD53D]/60 hover:border-[#FBD53D] hover:bg-[#FBD53D]/15 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-[0_0_12px_-2px_rgba(251,213,61,0.25)]"
         >
-          <HelpCircle className="w-3.5 h-3.5 text-[#FBD53D]" />
           <span>Help</span>
         </button>
       </div>
@@ -50,12 +51,18 @@ export function Header({
             {/* Quick devnet airdrop button if low on balance */}
             {onAirdrop && (
               <button
+                type="button"
                 onClick={onAirdrop}
+                disabled={airdropping}
                 title="Airdrop 1 Devnet SOL"
-                className="hidden sm:flex items-center gap-1 text-xs font-bold text-[#FBD53D] bg-[#201d10] border border-[#FBD53D]/30 hover:border-[#FBD53D] px-2.5 py-1.5 rounded-full transition-all cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-[#FBD53D] bg-[#201d10] border border-[#FBD53D]/30 hover:border-[#FBD53D] px-2.5 py-1.5 rounded-full transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
               >
-                <Flame className="w-3.5 h-3.5" />
-                <span>+1 SOL</span>
+                {airdropping ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FBD53D]" />
+                ) : (
+                  <Flame className="w-3.5 h-3.5" />
+                )}
+                <span>{airdropping ? "Funding…" : "+1 SOL"}</span>
               </button>
             )}
 
@@ -84,7 +91,7 @@ export function Header({
         ) : (
           <button
             onClick={onOpenWallet}
-            className="flex items-center gap-2 bg-[#FBD53D] hover:bg-[#fce06b] text-[#141004] text-xs font-extrabold px-4 py-2 rounded-full shadow-[0_0_15px_-3px_rgba(251, 213, 61,0.35)] transition-all cursor-pointer"
+            className="flex items-center gap-2 bg-[#FBD53D] hover:bg-[#fce06b] text-[#141004] text-xs font-extrabold px-4 py-2 rounded-full shadow-[0_0_15px_-3px_rgba(251,213,61,0.35)] transition-all cursor-pointer"
           >
             <Wallet className="w-3.5 h-3.5" />
             <span>Connect Wallet</span>

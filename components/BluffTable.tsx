@@ -33,13 +33,16 @@ export function BluffTable({
   // Scaled proportionally for 100% browser zoom so all 4 seats remain fully in-frame
   const [size, setSize] = React.useState<number>(() => {
     if (sizeProp) return sizeProp;
-    if (typeof window === "undefined") return 490;
+    if (typeof window === "undefined") return 520;
     const winW = window.innerWidth;
     const winH = window.innerHeight;
-    if (winW >= 1024) {
-      return winH < 820 ? 470 : 495;
+    if (winW >= 1280) {
+      return winH < 850 ? 515 : 545;
     }
-    if (winW >= 768) return 460;
+    if (winW >= 1024) {
+      return winH < 820 ? 485 : 515;
+    }
+    if (winW >= 768) return 465;
     return Math.min(410, Math.max(300, winW - 32));
   });
 
@@ -52,10 +55,12 @@ export function BluffTable({
       if (typeof window === "undefined") return;
       const winW = window.innerWidth;
       const winH = window.innerHeight;
-      if (winW >= 1024) {
-        setSize(winH < 820 ? 470 : 495);
+      if (winW >= 1280) {
+        setSize(winH < 850 ? 515 : 545);
+      } else if (winW >= 1024) {
+        setSize(winH < 820 ? 485 : 515);
       } else if (winW >= 768) {
-        setSize(460);
+        setSize(465);
       } else {
         setSize(Math.min(410, Math.max(300, winW - 32)));
       }

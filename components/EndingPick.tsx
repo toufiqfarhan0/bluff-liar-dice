@@ -23,20 +23,20 @@ export function EndingPick({
           type="button"
           onClick={() => onChange(Ending.Split)}
           disabled={disabled}
-          className={`group flex flex-col items-start p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
+          className={`group flex flex-col items-start p-3 sm:p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
             value === Ending.Split
-              ? "bg-[#201d10] border-[#FBD53D] shadow-[0_0_15px_-3px_rgba(251, 213, 61,0.25)]"
-              : "bg-[#171b14] border-[#2a3122] hover:border-[#3f4a33] opacity-75 hover:opacity-100"
+              ? "bg-[#201d10] border-[#FBD53D] shadow-[0_0_15px_-3px_rgba(251,213,61,0.25)]"
+              : "bg-[#141910] border-[#242e1c] hover:border-[#38462b] opacity-80 hover:opacity-100"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 shrink-0">
             <Divide
-              className={`w-4 h-4 ${
+              className={`w-4 h-4 shrink-0 ${
                 value === Ending.Split ? "text-[#FBD53D]" : "text-[#98a08e]"
               }`}
             />
             <span
-              className={`text-sm font-extrabold ${
+              className={`text-xs sm:text-sm font-extrabold whitespace-nowrap ${
                 value === Ending.Split ? "text-[#FBD53D]" : "text-[#f1f4ec]"
               }`}
             >
@@ -53,20 +53,20 @@ export function EndingPick({
           type="button"
           onClick={() => onChange(Ending.Coin)}
           disabled={disabled}
-          className={`group flex flex-col items-start p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
+          className={`group flex flex-col items-start p-3 sm:p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer ${
             value === Ending.Coin
-              ? "bg-[#201d10] border-[#FBD53D] shadow-[0_0_15px_-3px_rgba(251, 213, 61,0.25)]"
-              : "bg-[#171b14] border-[#2a3122] hover:border-[#3f4a33] opacity-75 hover:opacity-100"
+              ? "bg-[#201d10] border-[#FBD53D] shadow-[0_0_15px_-3px_rgba(251,213,61,0.25)]"
+              : "bg-[#141910] border-[#242e1c] hover:border-[#38462b] opacity-80 hover:opacity-100"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 shrink-0">
             <Coins
-              className={`w-4 h-4 ${
+              className={`w-4 h-4 shrink-0 ${
                 value === Ending.Coin ? "text-[#FBD53D]" : "text-[#98a08e]"
               }`}
             />
             <span
-              className={`text-sm font-extrabold ${
+              className={`text-xs sm:text-sm font-extrabold whitespace-nowrap ${
                 value === Ending.Coin ? "text-[#FBD53D]" : "text-[#f1f4ec]"
               }`}
             >

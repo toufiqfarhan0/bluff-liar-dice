@@ -14,7 +14,7 @@ export function RingTable({
   size?: number;
   children?: React.ReactNode;
 }) {
-  const face = 46;
+  const face = size >= 330 ? 52 : 46;
   const radius = size / 2 - face / 2 - 10;
 
   return (
